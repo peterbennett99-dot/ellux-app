@@ -13,13 +13,13 @@ const FIELDS = [
     hint: 'Find your key at ElevenLabs → Profile → API Keys',
   },
   {
-    section: 'HeyGen',
+    section: 'LiveAvatar',
     color: '#7c3aed',
     fields: [
-      { key: 'heygen_api_key', label: 'API Key', placeholder: 'your_heygen_key', secret: true },
+      { key: 'liveavatar_api_key', label: 'API Key', placeholder: 'your_liveavatar_key', secret: true },
     ],
-    docsUrl: 'https://docs.heygen.com',
-    hint: 'Find your key at HeyGen → Settings → API',
+    docsUrl: 'https://docs.liveavatar.com',
+    hint: 'Find your key at app.liveavatar.com → Developers',
   },
   {
     section: 'N8N',
@@ -139,7 +139,7 @@ export default function Settings_() {
       <div className="glass-card rounded-xl p-4">
         <p className="text-xs font-semibold text-slate-400 mb-2">About Ellux</p>
         <p className="text-xs text-slate-600">
-          Ellux v1.0 — Unified control panel for ElevenLabs, HeyGen, and N8N.
+          Ellux v1.0 — Unified control panel for ElevenLabs, LiveAvatar, and N8N.
           All API calls are made directly from your browser to the respective services.
         </p>
       </div>
