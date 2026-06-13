@@ -45,7 +45,16 @@ export const elevenLabs = {
   getConversations: (agentId) =>
     xiGet(`/convai/conversations${agentId ? `?agent_id=${agentId}` : ''}`),
   getConversation: (id) => xiGet(`/convai/conversations/${id}`),
-  getConversationAudio: (id) => `${XI_BASE}/convai/conversations/${id}/audio`,
+  // The audio endpoint requires the xi-api-key header, which a plain <audio src>
+  // can't send — fetch it as a blob and return an object URL instead.
+  getConversationAudioUrl: async (id) => {
+    const r = await fetch(`${XI_BASE}/convai/conversations/${id}/audio`, {
+      headers: { 'xi-api-key': XI() },
+    });
+    if (!r.ok) throw new Error(`ElevenLabs ${r.status}: ${await r.text()}`);
+    const blob = await r.blob();
+    return URL.createObjectURL(blob);
+  },
 };
 
 // ── LiveAvatar ──────────────────────────────────────────────────────────────

@@ -14,8 +14,14 @@ function duration(secs) {
 function ConvCard({ conv }) {
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState(null);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [audioError, setAudioError] = useState(null);
   const [loading, setLoading] = useState(false);
   const { showToast } = useApp();
+
+  useEffect(() => {
+    return () => { if (audioUrl) URL.revokeObjectURL(audioUrl); };
+  }, [audioUrl]);
 
   async function loadDetail() {
     if (detail) { setOpen(o => !o); return; }
@@ -24,6 +30,9 @@ function ConvCard({ conv }) {
       const d = await elevenLabs.getConversation(conv.conversation_id);
       setDetail(d);
       setOpen(true);
+      elevenLabs.getConversationAudioUrl(conv.conversation_id)
+        .then(setAudioUrl)
+        .catch(e => setAudioError(e.message));
     } catch (e) {
       showToast(e.message, 'error');
     } finally {
@@ -94,12 +103,18 @@ function ConvCard({ conv }) {
           {/* Audio player */}
           <div>
             <p className="text-xs text-slate-500 mb-1">Recording</p>
-            <audio
-              controls
-              className="w-full"
-              style={{ height: '32px', filter: 'invert(0.8) hue-rotate(180deg)' }}
-              src={elevenLabs.getConversationAudio(conv.conversation_id)}
-            />
+            {audioUrl ? (
+              <audio
+                controls
+                className="w-full"
+                style={{ height: '32px', filter: 'invert(0.8) hue-rotate(180deg)' }}
+                src={audioUrl}
+              />
+            ) : audioError ? (
+              <p className="text-xs text-red-400">Audio unavailable: {audioError}</p>
+            ) : (
+              <p className="text-xs text-slate-600">Loading audio…</p>
+            )}
           </div>
 
           {/* Summary */}
