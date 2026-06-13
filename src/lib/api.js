@@ -35,13 +35,27 @@ async function xiPatch(path, body) {
   return r.json();
 }
 
+// GET /convai/agents/{id} returns both the legacy `tools` array and the new
+// `tool_ids` under conversation_config.agent.prompt. PATCHing that payload back
+// as-is fails with "Cannot specify both tools and tool IDs" — strip the legacy
+// field before sending an agent update.
+function stripLegacyTools(conversationConfig) {
+  const prompt = conversationConfig?.agent?.prompt;
+  if (!prompt || !('tools' in prompt)) return conversationConfig;
+  const { tools, ...rest } = prompt;
+  return { ...conversationConfig, agent: { ...conversationConfig.agent, prompt: rest } };
+}
+
 export const elevenLabs = {
   getVoices: () => xiGet('/voices'),
   getVoice: (id) => xiGet(`/voices/${id}`),
   editVoiceSettings: (id, settings) => xiPost(`/voices/${id}/settings/edit`, settings),
   getAgents: () => xiGet('/convai/agents'),
   getAgent: (id) => xiGet(`/convai/agents/${id}`),
-  updateAgent: (id, body) => xiPatch(`/convai/agents/${id}`, body),
+  updateAgent: (id, body) => xiPatch(`/convai/agents/${id}`, {
+    ...body,
+    conversation_config: body.conversation_config && stripLegacyTools(body.conversation_config),
+  }),
   getConversations: (agentId) =>
     xiGet(`/convai/conversations${agentId ? `?agent_id=${agentId}` : ''}`),
   getConversation: (id) => xiGet(`/convai/conversations/${id}`),
