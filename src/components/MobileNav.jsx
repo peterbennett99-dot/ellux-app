@@ -1,4 +1,4 @@
-import { LayoutDashboard, Mic, Bot, Video, Workflow, BarChart2, Settings } from 'lucide-react';
+import { LayoutDashboard, Mic, Bot, Video, Workflow, BarChart2, Settings, Sparkles } from 'lucide-react';
 import { useApp } from '../lib/store';
 
 const NAV = [
@@ -7,6 +7,7 @@ const NAV = [
   { id: 'xi-agents', label: 'Agents', icon: Bot },
   { id: 'live-avatars', label: 'Avatars', icon: Video },
   { id: 'n8n', label: 'Workflows', icon: Workflow },
+  { id: 'preview-demo', label: 'Demo', icon: Sparkles },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 

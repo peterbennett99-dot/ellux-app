@@ -9,6 +9,7 @@ import XiAgents from './pages/XiAgents';
 import XiReports from './pages/XiReports';
 import LiveAvatars from './pages/LiveAvatars';
 import N8nWorkflows from './pages/N8nWorkflows';
+import PreviewDemo from './pages/PreviewDemo';
 import Settings from './pages/Settings';
 
 const PAGES = {
@@ -18,6 +19,7 @@ const PAGES = {
   'xi-reports': XiReports,
   'live-avatars': LiveAvatars,
   n8n: N8nWorkflows,
+  'preview-demo': PreviewDemo,
   settings: Settings,
 };
 
