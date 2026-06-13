@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mic, Bot, Video, Workflow, TrendingUp, Clock, Activity, Zap } from 'lucide-react';
+import { Mic, Bot, Video, Workflow, TrendingUp, Clock, Activity, Zap, Sparkles } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { elevenLabs } from '../lib/api';
 import { useApp } from '../lib/store';
@@ -58,6 +58,7 @@ export default function Dashboard() {
     { label: 'Manage Agents', icon: Bot, page: 'xi-agents', desc: 'AI agent configurations' },
     { label: 'Live Avatars', icon: Video, page: 'live-avatars', desc: 'LiveAvatar sessions' },
     { label: 'Run Workflow', icon: Zap, page: 'n8n', desc: 'Trigger N8N automations' },
+    { label: 'Preview & Demo', icon: Sparkles, page: 'preview-demo', desc: 'End-to-end live test' },
   ];
 
   return (

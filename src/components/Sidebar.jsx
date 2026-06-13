@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Mic, Bot, Video, Workflow,
-  BarChart2, Settings, ChevronRight, Zap
+  BarChart2, Settings, ChevronRight, Zap, Sparkles
 } from 'lucide-react';
 import { useApp } from '../lib/store';
 
@@ -14,6 +14,8 @@ const NAV = [
   { id: 'live-avatars', label: 'Live Avatars', icon: Video },
   { id: 'divider3', divider: true, label: 'AUTOMATION' },
   { id: 'n8n', label: 'N8N Workflows', icon: Workflow },
+  { id: 'divider5', divider: true, label: 'TESTING' },
+  { id: 'preview-demo', label: 'Preview & Demo', icon: Sparkles },
   { id: 'divider4', divider: true, label: 'SYSTEM' },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];

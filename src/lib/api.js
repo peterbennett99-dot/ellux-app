@@ -98,6 +98,11 @@ export const liveAvatar = {
   deleteAvatar: (id) => laDelete(`/v1/avatars/${id}`),
   // Create a short-lived embed/session for a live avatar
   createEmbed: (body) => laPost('/v2/embeddings', body),
+  // One-time: register an ElevenLabs API key as a LiveAvatar secret, returns { data: { secret_id } }
+  registerSecret: (secretType, secretValue) =>
+    laPost('/v1/secrets', { secret_type: secretType, secret_value: secretValue }),
+  // Mint a session token for the LiveAvatar Web SDK (LITE mode + ElevenLabs agent)
+  createSessionToken: (body) => laPost('/v1/sessions/token', body),
 };
 
 // ── N8N ─────────────────────────────────────────────────────────────────────
