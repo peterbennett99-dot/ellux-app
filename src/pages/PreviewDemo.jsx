@@ -37,7 +37,7 @@ export default function PreviewDemo() {
   const [agentId, setAgentId] = useState(selectedAgent?.id || localStorage.getItem(LS_AGENT_ID) || '');
   const [avatarId, setAvatarId] = useState(selectedAvatar?.id || localStorage.getItem(LS_AVATAR_ID) || SANDBOX_AVATAR_ID);
   const [webhookId, setWebhookId] = useState(localStorage.getItem(LS_WEBHOOK_ID) || '');
-  const [sandbox, setSandbox] = useState(true);
+  const [sandbox, setSandbox] = useState(!selectedAvatar?.id);
   const [registering, setRegistering] = useState(false);
   const [starting, setStarting] = useState(false);
   const [state, setState] = useState(SessionState.INACTIVE);
