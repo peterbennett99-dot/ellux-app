@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mic, Bot, Video, Workflow, TrendingUp, Clock, Activity, Zap, Sparkles } from 'lucide-react';
+import { Mic, Bot, Video, Workflow, TrendingUp, Clock, Activity, Zap, Sparkles, CheckCircle2, XCircle, MessageSquare } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { elevenLabs } from '../lib/api';
 import { useApp } from '../lib/store';
@@ -29,6 +29,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 export default function Dashboard() {
   const { setActivePage } = useApp();
   const [stats, setStats] = useState({ voices: 0, agents: 0, conversations: 0 });
+  const [evalStats, setEvalStats] = useState({ total: 0, passed: 0, failed: 0 });
 
   useEffect(() => {
     const xiKey = localStorage.getItem('xi_api_key');
@@ -43,6 +44,11 @@ export default function Dashboard() {
         agents: a.status === 'fulfilled' ? (a.value.agents?.length ?? 0) : 0,
         conversations: c.status === 'fulfilled' ? (c.value.conversations?.length ?? 0) : 0,
       });
+
+      const conversations = c.status === 'fulfilled' ? (c.value.conversations || []) : [];
+      const passed = conversations.filter(x => (x.call_successful || x.analysis?.call_successful) === 'success').length;
+      const failed = conversations.filter(x => (x.call_successful || x.analysis?.call_successful) === 'failure').length;
+      setEvalStats({ total: conversations.length, passed, failed });
     });
   }, []);
 
@@ -50,14 +56,14 @@ export default function Dashboard() {
     { label: 'Voices', value: stats.voices || '—', icon: Mic, color: '#00c6ff', page: 'xi-voices' },
     { label: 'Agents', value: stats.agents || '—', icon: Bot, color: '#7c3aed', page: 'xi-agents' },
     { label: 'Conversations', value: stats.conversations || '—', icon: Activity, color: '#10b981', page: 'xi-reports' },
-    { label: 'Workflows', value: 'N8N', icon: Workflow, color: '#f59e0b', page: 'n8n' },
+    { label: 'Workflows', value: '—', icon: Workflow, color: '#f59e0b', page: 'n8n' },
   ];
 
   const quickActions = [
-    { label: 'Configure Voices', icon: Mic, page: 'xi-voices', desc: 'ElevenLabs voice settings' },
+    { label: 'Configure Voices', icon: Mic, page: 'xi-voices', desc: 'Voice settings' },
     { label: 'Manage Agents', icon: Bot, page: 'xi-agents', desc: 'AI agent configurations' },
-    { label: 'Live Avatars', icon: Video, page: 'live-avatars', desc: 'LiveAvatar sessions' },
-    { label: 'Run Workflow', icon: Zap, page: 'n8n', desc: 'Trigger N8N automations' },
+    { label: 'Avatars', icon: Video, page: 'live-avatars', desc: 'Avatar sessions' },
+    { label: 'Run Workflow', icon: Zap, page: 'n8n', desc: 'Trigger workflow automations' },
     { label: 'Preview & Demo', icon: Sparkles, page: 'preview-demo', desc: 'End-to-end live test' },
   ];
 
@@ -87,6 +93,31 @@ export default function Dashboard() {
             <p className="text-xs text-slate-500 mt-0.5">{label}</p>
           </button>
         ))}
+      </div>
+
+      {/* Agent performance (pass/fail evaluation criteria) */}
+      <div>
+        <h2 className="text-sm font-semibold text-slate-400 mb-3 flex items-center gap-2">
+          <Activity size={14} />
+          AGENT PERFORMANCE
+        </h2>
+        <div className="grid grid-cols-3 gap-3">
+          <button onClick={() => setActivePage('xi-reports')} className="glass-card rounded-xl p-4 text-center">
+            <MessageSquare size={16} className="mx-auto mb-2 text-cyan-400" />
+            <p className="text-2xl font-bold text-white">{evalStats.total || '—'}</p>
+            <p className="text-xs text-slate-500 mt-0.5">Overall Interactions</p>
+          </button>
+          <button onClick={() => setActivePage('xi-reports')} className="glass-card rounded-xl p-4 text-center">
+            <CheckCircle2 size={16} className="mx-auto mb-2 text-green-400" />
+            <p className="text-2xl font-bold text-green-400">{evalStats.passed}</p>
+            <p className="text-xs text-slate-500 mt-0.5">Passed Interactions</p>
+          </button>
+          <button onClick={() => setActivePage('xi-reports')} className="glass-card rounded-xl p-4 text-center">
+            <XCircle size={16} className="mx-auto mb-2 text-red-400" />
+            <p className="text-2xl font-bold text-red-400">{evalStats.failed}</p>
+            <p className="text-xs text-slate-500 mt-0.5">Failed Interactions</p>
+          </button>
+        </div>
       </div>
 
       {/* Chart */}

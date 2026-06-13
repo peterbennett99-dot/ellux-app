@@ -40,28 +40,26 @@ function VoiceCard({ voice, onSave }) {
         tabIndex={0}
         onClick={() => setOpen(!open)}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setOpen(!open); }}
-        className="w-full flex items-center gap-4 p-4 text-left cursor-pointer"
+        className="w-full flex flex-col items-center text-center gap-2 p-5 cursor-pointer relative"
       >
-        <div className="w-10 h-10 rounded-full accent-gradient flex items-center justify-center flex-shrink-0">
-          <Mic size={16} className="text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white truncate">{voice.name}</p>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            {labels.gender && <span className="badge badge-blue">{labels.gender}</span>}
-            {labels.accent && <span className="badge badge-purple">{labels.accent}</span>}
-            <span className="badge badge-amber">{category}</span>
-            {isSelected && <span className="badge badge-green">Selected for Demo</span>}
-          </div>
-        </div>
         <button
           onClick={(e) => { e.stopPropagation(); setSelectedVoice({ id: voice.voice_id, name: voice.name }); }}
           className={isSelected ? 'btn-primary' : 'btn-ghost'}
           title={isSelected ? 'Deselect for demo' : 'Use this voice in the demo'}
-          style={{ padding: '6px 10px' }}
+          style={{ padding: '6px 10px', position: 'absolute', top: '12px', right: '12px' }}
         >
           <Sparkles size={13} />
         </button>
+        <div className="w-16 h-16 rounded-full accent-gradient flex items-center justify-center flex-shrink-0">
+          <Mic size={24} className="text-white" />
+        </div>
+        <p className="text-sm font-semibold text-white truncate w-full">{voice.name}</p>
+        <div className="flex items-center justify-center gap-2 flex-wrap">
+          {labels.gender && <span className="badge badge-blue">{labels.gender}</span>}
+          {labels.accent && <span className="badge badge-purple">{labels.accent}</span>}
+          <span className="badge badge-amber">{category}</span>
+          {isSelected && <span className="badge badge-green">Selected for Demo</span>}
+        </div>
         {open ? <ChevronUp size={16} className="text-slate-500 flex-shrink-0" /> : <ChevronDown size={16} className="text-slate-500 flex-shrink-0" />}
       </div>
 
@@ -135,7 +133,7 @@ export default function XiVoices() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Voices</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage ElevenLabs voice settings</p>
+          <p className="text-sm text-slate-500 mt-1">Manage voice settings</p>
         </div>
         <button onClick={load} disabled={loading} className="btn-ghost">
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
@@ -164,7 +162,7 @@ export default function XiVoices() {
           {voices.length === 0 ? 'No voices found. Check your API key in Settings.' : 'No voices match your search.'}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start">
           {filtered.map(v => (
             <VoiceCard key={v.voice_id} voice={v} />
           ))}

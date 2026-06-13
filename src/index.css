@@ -61,6 +61,8 @@ input, select, textarea {
   padding: 8px 12px;
   width: 100%;
   box-sizing: border-box;
+  /* 16px prevents iOS Safari from auto-zooming the page on focus */
+  font-size: 16px;
 }
 
 input:focus, select:focus, textarea:focus {

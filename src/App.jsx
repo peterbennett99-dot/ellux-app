@@ -6,6 +6,7 @@ import Toast from './components/Toast';
 import Dashboard from './pages/Dashboard';
 import XiVoices from './pages/XiVoices';
 import XiAgents from './pages/XiAgents';
+import XiKnowledgeBase from './pages/XiKnowledgeBase';
 import XiReports from './pages/XiReports';
 import LiveAvatars from './pages/LiveAvatars';
 import N8nWorkflows from './pages/N8nWorkflows';
@@ -16,6 +17,7 @@ const PAGES = {
   dashboard: Dashboard,
   'xi-voices': XiVoices,
   'xi-agents': XiAgents,
+  'xi-knowledge': XiKnowledgeBase,
   'xi-reports': XiReports,
   'live-avatars': LiveAvatars,
   n8n: N8nWorkflows,

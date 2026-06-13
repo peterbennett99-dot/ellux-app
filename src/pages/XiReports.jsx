@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BarChart2, RefreshCw, Play, Clock, MessageSquare, User, ChevronDown, ChevronUp, Download } from 'lucide-react';
+import { BarChart2, RefreshCw, Play, Clock, MessageSquare, User, ChevronDown, ChevronUp, Download, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { elevenLabs } from '../lib/api';
 import { useApp } from '../lib/store';
@@ -43,6 +43,13 @@ function ConvCard({ conv }) {
   const status = conv.status || 'done';
   const badgeCls = status === 'processing' ? 'badge-amber' : status === 'error' ? 'badge-red' : 'badge-green';
 
+  const callSuccess = conv.call_successful || conv.analysis?.call_successful;
+  const resultBadge = callSuccess === 'success'
+    ? <span className="badge badge-green"><CheckCircle2 size={10} /> Passed</span>
+    : callSuccess === 'failure'
+      ? <span className="badge badge-red"><XCircle size={10} /> Failed</span>
+      : <span className="badge badge-blue"><HelpCircle size={10} /> Unevaluated</span>;
+
   return (
     <div className="glass-card rounded-xl overflow-hidden">
       <button onClick={loadDetail} className="w-full flex items-center gap-3 p-4 text-left">
@@ -53,6 +60,7 @@ function ConvCard({ conv }) {
           <p className="text-xs font-mono text-slate-400 truncate">{conv.conversation_id}</p>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <span className={`badge ${badgeCls}`}>{status}</span>
+            {resultBadge}
             {conv.metadata?.start_time_unix_secs && (
               <span className="text-xs text-slate-500">
                 {new Date(conv.metadata.start_time_unix_secs * 1000).toLocaleDateString()}
@@ -162,12 +170,20 @@ export default function XiReports() {
   });
   const chartData = Object.entries(buckets).map(([name, count]) => ({ name, count }));
 
+  // Group by evaluation criteria result (call_successful)
+  const passed = conversations.filter(c => (c.call_successful || c.analysis?.call_successful) === 'success');
+  const failed = conversations.filter(c => (c.call_successful || c.analysis?.call_successful) === 'failure');
+  const unevaluated = conversations.filter(c => {
+    const r = c.call_successful || c.analysis?.call_successful;
+    return r !== 'success' && r !== 'failure';
+  });
+
   return (
     <div className="fade-in p-6 space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Conversations</h1>
-          <p className="text-sm text-slate-500 mt-1">ElevenLabs conversation reports & recordings</p>
+          <p className="text-sm text-slate-500 mt-1">Conversation reports & recordings</p>
         </div>
         <button onClick={load} disabled={loading} className="btn-ghost">
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
@@ -178,7 +194,7 @@ export default function XiReports() {
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Total', value: conversations.length },
+          { label: 'Total Interactions', value: conversations.length },
           { label: 'Avg Duration', value: duration(Math.round(conversations.reduce((a, c) => a + (c.metadata?.call_duration_secs || 0), 0) / (conversations.length || 1))) },
           { label: 'Completed', value: conversations.filter(c => c.status === 'done').length },
         ].map(s => (
@@ -188,6 +204,27 @@ export default function XiReports() {
           </div>
         ))}
       </div>
+
+      {/* Pass / Fail criteria stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="glass-card rounded-xl p-3 text-center">
+          <p className="text-xl font-bold text-white">{passed.length + failed.length + unevaluated.length}</p>
+          <p className="text-xs text-slate-500 mt-0.5 flex items-center justify-center gap-1"><MessageSquare size={11} /> Overall Interactions</p>
+        </div>
+        <div className="glass-card rounded-xl p-3 text-center">
+          <p className="text-xl font-bold text-green-400">{passed.length}</p>
+          <p className="text-xs text-slate-500 mt-0.5 flex items-center justify-center gap-1"><CheckCircle2 size={11} className="text-green-400" /> Passed Interactions</p>
+        </div>
+        <div className="glass-card rounded-xl p-3 text-center">
+          <p className="text-xl font-bold text-red-400">{failed.length}</p>
+          <p className="text-xs text-slate-500 mt-0.5 flex items-center justify-center gap-1"><XCircle size={11} className="text-red-400" /> Failed Interactions</p>
+        </div>
+      </div>
+      {passed.length === 0 && failed.length === 0 && conversations.length > 0 && (
+        <p className="text-xs text-slate-500 text-center">
+          No conversations have evaluation results yet. Add Evaluation Criteria to an agent to start tracking pass/fail outcomes.
+        </p>
+      )}
 
       {/* Chart */}
       {conversations.length > 0 && (
@@ -234,8 +271,31 @@ export default function XiReports() {
           No conversations found. Check your API key in Settings.
         </div>
       ) : (
-        <div className="space-y-3">
-          {conversations.map(c => <ConvCard key={c.conversation_id} conv={c} />)}
+        <div className="space-y-6">
+          {passed.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold tracking-widest text-green-400 flex items-center gap-1.5">
+                <CheckCircle2 size={12} /> PASSED ({passed.length})
+              </p>
+              {passed.map(c => <ConvCard key={c.conversation_id} conv={c} />)}
+            </div>
+          )}
+          {failed.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold tracking-widest text-red-400 flex items-center gap-1.5">
+                <XCircle size={12} /> FAILED ({failed.length})
+              </p>
+              {failed.map(c => <ConvCard key={c.conversation_id} conv={c} />)}
+            </div>
+          )}
+          {unevaluated.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold tracking-widest text-slate-500 flex items-center gap-1.5">
+                <HelpCircle size={12} /> UNEVALUATED ({unevaluated.length})
+              </p>
+              {unevaluated.map(c => <ConvCard key={c.conversation_id} conv={c} />)}
+            </div>
+          )}
         </div>
       )}
     </div>

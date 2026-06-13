@@ -4,16 +4,16 @@ import { useApp } from '../lib/store';
 
 const FIELDS = [
   {
-    section: 'ElevenLabs',
+    section: 'Agents',
     color: '#00c6ff',
     fields: [
       { key: 'xi_api_key', label: 'API Key', placeholder: 'sk-…', secret: true },
     ],
     docsUrl: 'https://elevenlabs.io/docs',
-    hint: 'Find your key at ElevenLabs → Profile → API Keys',
+    hint: 'Find your key at elevenlabs.io → Profile → API Keys',
   },
   {
-    section: 'LiveAvatar',
+    section: 'Avatars',
     color: '#7c3aed',
     fields: [
       { key: 'liveavatar_api_key', label: 'API Key', placeholder: 'your_liveavatar_key', secret: true },
@@ -22,13 +22,13 @@ const FIELDS = [
     hint: 'Find your key at app.liveavatar.com → Developers',
   },
   {
-    section: 'N8N',
+    section: 'Workflows',
     color: '#f59e0b',
     fields: [
-      { key: 'n8n_base_url', label: 'N8N Base URL', placeholder: 'https://your-n8n.com', secret: false },
+      { key: 'n8n_base_url', label: 'Workflow Base URL', placeholder: 'https://your-workflow-host.com', secret: false },
       { key: 'n8n_api_key', label: 'API Key', placeholder: 'n8n_api_…', secret: true },
     ],
-    hint: 'Settings → API in your N8N instance. Leave blank to use only webhook triggers.',
+    hint: 'Settings → API in your workflow instance. Leave blank to use only webhook triggers.',
   },
 ];
 
@@ -139,7 +139,7 @@ export default function Settings_() {
       <div className="glass-card rounded-xl p-4">
         <p className="text-xs font-semibold text-slate-400 mb-2">About Ellux</p>
         <p className="text-xs text-slate-600">
-          Ellux v1.0 — Unified control panel for ElevenLabs, LiveAvatar, and N8N.
+          Ellux v1.0 — Unified control panel for Agents, Avatars, and Workflows.
           All API calls are made directly from your browser to the respective services.
         </p>
       </div>

@@ -11,7 +11,7 @@ async function xiGet(path) {
   const r = await fetch(`${XI_BASE}${path}`, {
     headers: { 'xi-api-key': XI(), 'Content-Type': 'application/json' },
   });
-  if (!r.ok) throw new Error(`ElevenLabs ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`Agents ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
@@ -21,7 +21,7 @@ async function xiPost(path, body) {
     headers: { 'xi-api-key': XI(), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`ElevenLabs ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`Agents ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
@@ -31,8 +31,27 @@ async function xiPatch(path, body) {
     headers: { 'xi-api-key': XI(), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`ElevenLabs ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`Agents ${r.status}: ${await r.text()}`);
   return r.json();
+}
+
+async function xiPostForm(path, formData) {
+  const r = await fetch(`${XI_BASE}${path}`, {
+    method: 'POST',
+    headers: { 'xi-api-key': XI() },
+    body: formData,
+  });
+  if (!r.ok) throw new Error(`Agents ${r.status}: ${await r.text()}`);
+  return r.json();
+}
+
+async function xiDelete(path) {
+  const r = await fetch(`${XI_BASE}${path}`, {
+    method: 'DELETE',
+    headers: { 'xi-api-key': XI(), 'Content-Type': 'application/json' },
+  });
+  if (!r.ok) throw new Error(`Agents ${r.status}: ${await r.text()}`);
+  return r.status === 204 ? null : r.json();
 }
 
 // GET /convai/agents/{id} returns both the legacy `tools` array and the new
@@ -52,6 +71,7 @@ export const elevenLabs = {
   editVoiceSettings: (id, settings) => xiPost(`/voices/${id}/settings/edit`, settings),
   getAgents: () => xiGet('/convai/agents'),
   getAgent: (id) => xiGet(`/convai/agents/${id}`),
+  createAgent: (body) => xiPost('/convai/agents/create', body),
   updateAgent: (id, body) => xiPatch(`/convai/agents/${id}`, {
     ...body,
     conversation_config: body.conversation_config && stripLegacyTools(body.conversation_config),
@@ -65,10 +85,25 @@ export const elevenLabs = {
     const r = await fetch(`${XI_BASE}/convai/conversations/${id}/audio`, {
       headers: { 'xi-api-key': XI() },
     });
-    if (!r.ok) throw new Error(`ElevenLabs ${r.status}: ${await r.text()}`);
+    if (!r.ok) throw new Error(`Agents ${r.status}: ${await r.text()}`);
     const blob = await r.blob();
     return URL.createObjectURL(blob);
   },
+  // ── Knowledge Base ────────────────────────────────────────────────────────
+  getKnowledgeBaseList: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return xiGet(`/convai/knowledge-base${qs ? `?${qs}` : ''}`);
+  },
+  getKnowledgeBaseDocument: (id) => xiGet(`/convai/knowledge-base/${id}`),
+  createKnowledgeBaseFromText: (text, name) => xiPost('/convai/knowledge-base/text', { text, name: name || undefined }),
+  createKnowledgeBaseFromUrl: (url, name) => xiPost('/convai/knowledge-base/url', { url, name: name || undefined }),
+  createKnowledgeBaseFromFile: (file, name) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    if (name) fd.append('name', name);
+    return xiPostForm('/convai/knowledge-base/file', fd);
+  },
+  deleteKnowledgeBaseDocument: (id) => xiDelete(`/convai/knowledge-base/${id}`),
 };
 
 // ── LiveAvatar ──────────────────────────────────────────────────────────────
@@ -79,7 +114,7 @@ async function laGet(path) {
   const r = await fetch(`${LA_BASE}${path}`, {
     headers: { 'X-API-KEY': LA(), 'Content-Type': 'application/json' },
   });
-  if (!r.ok) throw new Error(`LiveAvatar ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`Avatars ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
@@ -89,7 +124,7 @@ async function laPost(path, body) {
     headers: { 'X-API-KEY': LA(), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`LiveAvatar ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`Avatars ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
@@ -99,7 +134,7 @@ async function laPatch(path, body) {
     headers: { 'X-API-KEY': LA(), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`LiveAvatar ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`Avatars ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
@@ -108,7 +143,7 @@ async function laDelete(path) {
     method: 'DELETE',
     headers: { 'X-API-KEY': LA(), 'Content-Type': 'application/json' },
   });
-  if (!r.ok) throw new Error(`LiveAvatar ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`Avatars ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
@@ -136,7 +171,7 @@ async function n8nGet(path) {
   const r = await fetch(`${N8N_URL()}${path}`, {
     headers: { 'X-N8N-API-KEY': N8N_KEY(), 'Content-Type': 'application/json' },
   });
-  if (!r.ok) throw new Error(`N8N ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`Workflows ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
@@ -146,7 +181,7 @@ async function n8nPost(path, body) {
     headers: { 'X-N8N-API-KEY': N8N_KEY(), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`N8N ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`Workflows ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
