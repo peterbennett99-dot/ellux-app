@@ -56,7 +56,7 @@ export default function Dashboard() {
   const quickActions = [
     { label: 'Configure Voices', icon: Mic, page: 'xi-voices', desc: 'ElevenLabs voice settings' },
     { label: 'Manage Agents', icon: Bot, page: 'xi-agents', desc: 'AI agent configurations' },
-    { label: 'Upload Avatar', icon: Video, page: 'hg-avatars', desc: 'HeyGen live avatars' },
+    { label: 'Live Avatars', icon: Video, page: 'live-avatars', desc: 'LiveAvatar sessions' },
     { label: 'Run Workflow', icon: Zap, page: 'n8n', desc: 'Trigger N8N automations' },
   ];
 

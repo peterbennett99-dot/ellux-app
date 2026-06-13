@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Workflow, RefreshCw, Play, Plus, Zap, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { Workflow, RefreshCw, Play, Pause, Plus, Zap, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { n8n } from '../lib/api';
 import { useApp } from '../lib/store';
 
@@ -10,25 +10,32 @@ function loadWebhooks() {
 }
 function saveWebhooks(wh) { localStorage.setItem(STORED_KEY, JSON.stringify(wh)); }
 
-function WorkflowCard({ workflow }) {
-  const [triggering, setTriggering] = useState(false);
-  const [last, setLast] = useState(null);
+function WorkflowCard({ workflow, onChanged }) {
+  const [busy, setBusy] = useState(false);
+  const [active, setActive] = useState(workflow.active);
   const { showToast } = useApp();
 
-  async function trigger() {
-    setTriggering(true);
+  async function toggleActive() {
+    const goingActive = !active;
+    if (!window.confirm(
+      goingActive
+        ? `Activate "${workflow.name}"? This enables its live triggers (webhooks/schedules) in n8n.`
+        : `Deactivate "${workflow.name}"? This disables its live triggers in n8n.`
+    )) return;
+
+    setBusy(true);
     try {
-      await n8n.executeWorkflow(workflow.id);
-      setLast(new Date().toLocaleTimeString());
-      showToast(`Workflow "${workflow.name}" triggered!`, 'success');
+      if (goingActive) await n8n.activateWorkflow(workflow.id);
+      else await n8n.deactivateWorkflow(workflow.id);
+      setActive(goingActive);
+      showToast(`Workflow "${workflow.name}" ${goingActive ? 'activated' : 'deactivated'}`, 'success');
+      onChanged?.();
     } catch (e) {
       showToast(e.message, 'error');
     } finally {
-      setTriggering(false);
+      setBusy(false);
     }
   }
-
-  const active = workflow.active;
 
   return (
     <div className="glass-card rounded-xl p-4 flex items-center gap-4">
@@ -39,16 +46,16 @@ function WorkflowCard({ workflow }) {
         <p className="text-sm font-semibold text-white truncate">{workflow.name}</p>
         <div className="flex items-center gap-2 mt-0.5">
           <span className={`badge ${active ? 'badge-green' : 'badge-amber'}`}>{active ? 'active' : 'inactive'}</span>
-          {last && <span className="text-xs text-slate-500">Last run: {last}</span>}
         </div>
       </div>
       <button
-        onClick={trigger}
-        disabled={triggering}
+        onClick={toggleActive}
+        disabled={busy}
         className="btn-ghost flex-shrink-0"
+        title={active ? 'Deactivate workflow (disables live triggers)' : 'Activate workflow (enables live triggers)'}
       >
-        <Play size={13} className={triggering ? 'animate-pulse' : ''} />
-        {triggering ? '…' : 'Run'}
+        {active ? <Pause size={13} /> : <Play size={13} />}
+        {busy ? '…' : active ? 'Deactivate' : 'Activate'}
       </button>
     </div>
   );
@@ -221,11 +228,17 @@ export default function N8nWorkflows() {
       {tab === 'api' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-500">Connected via N8N API</p>
+            <p className="text-xs text-slate-500">Connected via N8N API — toggle live activation status</p>
             <button onClick={loadWorkflows} disabled={loading} className="btn-ghost">
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
               Refresh
             </button>
+          </div>
+
+          <div className="glass rounded-xl p-3" style={{ borderColor: 'rgba(245,158,11,0.2)', background: 'rgba(245,158,11,0.05)' }}>
+            <p className="text-xs text-slate-400">
+              The n8n API doesn't support running a workflow on demand — Activate/Deactivate toggles the workflow's live triggers (webhooks/schedules). To trigger a one-off run, use the <strong>Webhooks</strong> tab instead.
+            </p>
           </div>
 
           {loading ? (
@@ -240,7 +253,7 @@ export default function N8nWorkflows() {
             </div>
           ) : (
             <div className="space-y-3">
-              {workflows.map(w => <WorkflowCard key={w.id} workflow={w} />)}
+              {workflows.map(w => <WorkflowCard key={w.id} workflow={w} onChanged={loadWorkflows} />)}
             </div>
           )}
         </div>

@@ -48,61 +48,60 @@ export const elevenLabs = {
   getConversationAudio: (id) => `${XI_BASE}/convai/conversations/${id}/audio`,
 };
 
-// ── HeyGen ──────────────────────────────────────────────────────────────────
-const HG = () => getKey('heygen_api_key');
-const HG_BASE = 'https://api.heygen.com';
+// ── LiveAvatar ──────────────────────────────────────────────────────────────
+const LA = () => getKey('liveavatar_api_key');
+const LA_BASE = 'https://api.liveavatar.com';
 
-async function hgGet(path) {
-  const r = await fetch(`${HG_BASE}${path}`, {
-    headers: { 'X-Api-Key': HG(), 'Content-Type': 'application/json' },
+async function laGet(path) {
+  const r = await fetch(`${LA_BASE}${path}`, {
+    headers: { 'X-API-KEY': LA(), 'Content-Type': 'application/json' },
   });
-  if (!r.ok) throw new Error(`HeyGen ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`LiveAvatar ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
-async function hgPost(path, body) {
-  const r = await fetch(`${HG_BASE}${path}`, {
+async function laPost(path, body) {
+  const r = await fetch(`${LA_BASE}${path}`, {
     method: 'POST',
-    headers: { 'X-Api-Key': HG(), 'Content-Type': 'application/json' },
+    headers: { 'X-API-KEY': LA(), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`HeyGen ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`LiveAvatar ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
-async function hgPatch(path, body) {
-  const r = await fetch(`${HG_BASE}${path}`, {
+async function laPatch(path, body) {
+  const r = await fetch(`${LA_BASE}${path}`, {
     method: 'PATCH',
-    headers: { 'X-Api-Key': HG(), 'Content-Type': 'application/json' },
+    headers: { 'X-API-KEY': LA(), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`HeyGen ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`LiveAvatar ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
-export const heyGen = {
-  getAvatars: () => hgGet('/v2/avatars'),
-  getStreamingAvatars: () => hgGet('/v2/streaming/avatar/list'),
-  createStreamingSession: (body) => hgPost('/v1/streaming.new', body),
-  stopStreamingSession: (sessionId) => hgPost('/v1/streaming.stop', { session_id: sessionId }),
-  uploadAvatarPhoto: async (file) => {
-    const fd = new FormData();
-    fd.append('file', file);
-    const r = await fetch(`${HG_BASE}/v1/photo_avatar/photo/upload`, {
-      method: 'POST',
-      headers: { 'X-Api-Key': HG() },
-      body: fd,
-    });
-    if (!r.ok) throw new Error(`HeyGen ${r.status}: ${await r.text()}`);
-    return r.json();
-  },
-  createPhotoAvatar: (body) => hgPost('/v1/photo_avatar/avatar_group/create', body),
-  getAvatarGroups: () => hgGet('/v2/avatar_group'),
-  updateStreamingAvatar: (id, body) => hgPatch(`/v2/streaming/avatar/${id}`, body),
+async function laDelete(path) {
+  const r = await fetch(`${LA_BASE}${path}`, {
+    method: 'DELETE',
+    headers: { 'X-API-KEY': LA(), 'Content-Type': 'application/json' },
+  });
+  if (!r.ok) throw new Error(`LiveAvatar ${r.status}: ${await r.text()}`);
+  return r.json();
+}
+
+export const liveAvatar = {
+  // List avatars for the authenticated user (paginated)
+  getAvatars: (page = 1, pageSize = 20) => laGet(`/v1/avatars?page=${page}&page_size=${pageSize}`),
+  getPublicAvatars: (page = 1, pageSize = 20) => laGet(`/v1/avatars/public?page=${page}&page_size=${pageSize}`),
+  getAvatar: (id) => laGet(`/v1/avatars/${id}`),
+  updateAvatar: (id, body) => laPatch(`/v1/avatars/${id}`, body),
+  deleteAvatar: (id) => laDelete(`/v1/avatars/${id}`),
+  // Create a short-lived embed/session for a live avatar
+  createEmbed: (body) => laPost('/v2/embeddings', body),
 };
 
 // ── N8N ─────────────────────────────────────────────────────────────────────
-const N8N_URL = () => getKey('n8n_base_url');
+const N8N_URL = () => getKey('n8n_base_url').replace(/\/+$/, '');
 const N8N_KEY = () => getKey('n8n_api_key');
 
 async function n8nGet(path) {
@@ -123,13 +122,29 @@ async function n8nPost(path, body) {
   return r.json();
 }
 
+// Reads a fetch Response body that may be empty or non-JSON without throwing.
+async function readBody(r) {
+  const text = await r.text();
+  if (!text) return null;
+  try { return JSON.parse(text); } catch { return text; }
+}
+
 export const n8n = {
   getWorkflows: () => n8nGet('/api/v1/workflows'),
-  triggerWebhook: (webhookUrl, payload) =>
-    fetch(webhookUrl, {
+  // Triggers an n8n Webhook node. Response may be empty, plain text, or JSON.
+  triggerWebhook: async (webhookUrl, payload) => {
+    const r = await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
-    }).then((r) => r.json()),
-  executeWorkflow: (id) => n8nPost(`/api/v1/workflows/${id}/activate`, {}),
+    });
+    const body = await readBody(r);
+    if (!r.ok) throw new Error(`Webhook ${r.status}: ${typeof body === 'string' ? body : JSON.stringify(body)}`);
+    return body;
+  },
+  // The public n8n API has no "run once" endpoint — these toggle the workflow's
+  // live trigger state (production webhooks/schedules), which is a meaningful
+  // side effect distinct from a one-off execution.
+  activateWorkflow: (id) => n8nPost(`/api/v1/workflows/${id}/activate`, {}),
+  deactivateWorkflow: (id) => n8nPost(`/api/v1/workflows/${id}/deactivate`, {}),
 };

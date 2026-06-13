@@ -5,7 +5,7 @@ const NAV = [
   { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
   { id: 'xi-voices', label: 'Voices', icon: Mic },
   { id: 'xi-agents', label: 'Agents', icon: Bot },
-  { id: 'hg-avatars', label: 'Avatars', icon: Video },
+  { id: 'live-avatars', label: 'Avatars', icon: Video },
   { id: 'n8n', label: 'Workflows', icon: Workflow },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];

@@ -7,7 +7,7 @@ import Dashboard from './pages/Dashboard';
 import XiVoices from './pages/XiVoices';
 import XiAgents from './pages/XiAgents';
 import XiReports from './pages/XiReports';
-import HgAvatars from './pages/HgAvatars';
+import LiveAvatars from './pages/LiveAvatars';
 import N8nWorkflows from './pages/N8nWorkflows';
 import Settings from './pages/Settings';
 
@@ -16,7 +16,7 @@ const PAGES = {
   'xi-voices': XiVoices,
   'xi-agents': XiAgents,
   'xi-reports': XiReports,
-  'hg-avatars': HgAvatars,
+  'live-avatars': LiveAvatars,
   n8n: N8nWorkflows,
   settings: Settings,
 };
