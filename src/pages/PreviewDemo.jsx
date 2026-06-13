@@ -67,9 +67,9 @@ export default function PreviewDemo() {
     if (!xiKey) { showToast('Add your ElevenLabs API key in Settings first', 'error'); return; }
     setRegistering(true);
     try {
-      const res = await liveAvatar.registerSecret('ELEVENLABS_API_KEY', xiKey);
-      const id = res.data?.secret_id;
-      if (!id) throw new Error('No secret_id returned');
+      const res = await liveAvatar.registerSecret('Ellux ElevenLabs Key', 'ELEVENLABS_API_KEY', xiKey);
+      const id = res.data?.id;
+      if (!id) throw new Error('No secret id returned');
       persist(LS_SECRET_ID, id, setSecretId);
       showToast('ElevenLabs secret registered with LiveAvatar', 'success');
     } catch (e) {
@@ -81,7 +81,7 @@ export default function PreviewDemo() {
 
   async function startSession() {
     if (!agentId) { showToast('Select an ElevenLabs agent', 'error'); return; }
-    if (!sandbox && !secretId) { showToast('Register your ElevenLabs secret first', 'error'); return; }
+    if (!secretId) { showToast('Register your ElevenLabs secret first', 'error'); return; }
     if (!avatarId) { showToast('Enter an Avatar ID', 'error'); return; }
 
     setStarting(true);
@@ -90,7 +90,7 @@ export default function PreviewDemo() {
         mode: 'LITE',
         avatar_id: sandbox ? SANDBOX_AVATAR_ID : avatarId,
         is_sandbox: sandbox,
-        elevenlabs_agent_config: { agent_id: agentId, ...(sandbox ? {} : { secret_id: secretId }) },
+        elevenlabs_agent_config: { agent_id: agentId, secret_id: secretId },
       };
       const res = await liveAvatar.createSessionToken(body);
       const token = res.data?.session_token;
@@ -188,25 +188,23 @@ export default function PreviewDemo() {
           </div>
 
           {!sandbox && (
-            <>
-              <div>
-                <label className="text-xs font-medium text-slate-400 block mb-1">Avatar ID</label>
-                <input value={avatarId} onChange={e => persist(LS_AVATAR_ID, e.target.value, setAvatarId)} placeholder="Avatar ID from Live Avatars page" />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-slate-400 block mb-1">ElevenLabs Secret</label>
-                <div className="flex items-center gap-2">
-                  <input value={secretId} onChange={e => persist(LS_SECRET_ID, e.target.value, setSecretId)} placeholder="Registered secret_id" style={{ flex: 1 }} />
-                  <button onClick={registerSecret} disabled={registering} className="btn-ghost flex-shrink-0">
-                    <KeyRound size={13} />
-                    {registering ? 'Registering…' : 'Register from Settings key'}
-                  </button>
-                </div>
-                <p className="text-xs text-slate-600 mt-1">Registers your ElevenLabs API key (Settings) as a LiveAvatar secret, one time.</p>
-              </div>
-            </>
+            <div>
+              <label className="text-xs font-medium text-slate-400 block mb-1">Avatar ID</label>
+              <input value={avatarId} onChange={e => persist(LS_AVATAR_ID, e.target.value, setAvatarId)} placeholder="Avatar ID from Live Avatars page" />
+            </div>
           )}
+
+          <div>
+            <label className="text-xs font-medium text-slate-400 block mb-1">ElevenLabs Secret</label>
+            <div className="flex items-center gap-2">
+              <input value={secretId} onChange={e => persist(LS_SECRET_ID, e.target.value, setSecretId)} placeholder="Registered secret_id" style={{ flex: 1 }} />
+              <button onClick={registerSecret} disabled={registering} className="btn-ghost flex-shrink-0">
+                <KeyRound size={13} />
+                {registering ? 'Registering…' : 'Register from Settings key'}
+              </button>
+            </div>
+            <p className="text-xs text-slate-600 mt-1">Registers your ElevenLabs API key (Settings) as a LiveAvatar secret, one time — required even in sandbox mode.</p>
+          </div>
 
           <div>
             <label className="text-xs font-medium text-slate-400 block mb-1">N8N Webhook on session events <span className="text-slate-600">(optional)</span></label>
