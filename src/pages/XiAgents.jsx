@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bot, RefreshCw, Save, ChevronDown, ChevronUp, Settings2 } from 'lucide-react';
+import { Bot, RefreshCw, Save, ChevronDown, ChevronUp, Settings2, Sparkles } from 'lucide-react';
 import { elevenLabs } from '../lib/api';
 import { useApp } from '../lib/store';
 
@@ -9,7 +9,8 @@ function AgentCard({ agent: initialAgent }) {
   const [detail, setDetail] = useState(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { showToast } = useApp();
+  const { showToast, selectedAgent, setSelectedAgent } = useApp();
+  const isSelected = selectedAgent?.id === agent.agent_id;
 
   async function fetchDetail() {
     if (detail) { setOpen(o => !o); return; }
@@ -46,15 +47,32 @@ function AgentCard({ agent: initialAgent }) {
   const tts = cfg.tts || {};
 
   return (
-    <div className="glass-card rounded-xl overflow-hidden">
-      <button onClick={fetchDetail} className="w-full flex items-center gap-4 p-4 text-left">
+    <div className={`glass-card rounded-xl overflow-hidden ${isSelected ? 'ring-2 ring-cyan-400' : ''}`}>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={fetchDetail}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fetchDetail(); }}
+        className="w-full flex items-center gap-4 p-4 text-left cursor-pointer"
+      >
         <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(124,58,237,0.2)' }}>
           <Bot size={16} className="text-purple-400" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-white truncate">{agent.name || 'Unnamed Agent'}</p>
-          <p className="text-xs text-slate-500 font-mono mt-0.5">{agent.agent_id}</p>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <p className="text-xs text-slate-500 font-mono">{agent.agent_id}</p>
+            {isSelected && <span className="badge badge-green">Selected for Demo</span>}
+          </div>
         </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); setSelectedAgent({ id: agent.agent_id, name: agent.name }); }}
+          className={isSelected ? 'btn-primary' : 'btn-ghost'}
+          title={isSelected ? 'Deselect for demo' : 'Use this agent in the demo'}
+          style={{ padding: '6px 10px' }}
+        >
+          <Sparkles size={13} />
+        </button>
         {loading ? (
           <RefreshCw size={14} className="animate-spin text-slate-500" />
         ) : open ? (
@@ -62,7 +80,7 @@ function AgentCard({ agent: initialAgent }) {
         ) : (
           <ChevronDown size={16} className="text-slate-500 flex-shrink-0" />
         )}
-      </button>
+      </div>
 
       {open && detail && (
         <div className="px-4 pb-4 space-y-4 border-t" style={{ borderColor: 'rgba(0,198,255,0.08)' }}>

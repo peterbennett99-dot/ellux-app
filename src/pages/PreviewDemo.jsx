@@ -27,15 +27,15 @@ const STATE_COLORS = {
 };
 
 export default function PreviewDemo() {
-  const { showToast } = useApp();
+  const { showToast, selectedAgent, selectedAvatar, selectedVoice } = useApp();
   const videoRef = useRef(null);
   const sessionRef = useRef(null);
 
   const [agents, setAgents] = useState([]);
   const [webhooks, setWebhooks] = useState(loadWebhooks());
   const [secretId, setSecretId] = useState(localStorage.getItem(LS_SECRET_ID) || '');
-  const [agentId, setAgentId] = useState(localStorage.getItem(LS_AGENT_ID) || '');
-  const [avatarId, setAvatarId] = useState(localStorage.getItem(LS_AVATAR_ID) || SANDBOX_AVATAR_ID);
+  const [agentId, setAgentId] = useState(selectedAgent?.id || localStorage.getItem(LS_AGENT_ID) || '');
+  const [avatarId, setAvatarId] = useState(selectedAvatar?.id || localStorage.getItem(LS_AVATAR_ID) || SANDBOX_AVATAR_ID);
   const [webhookId, setWebhookId] = useState(localStorage.getItem(LS_WEBHOOK_ID) || '');
   const [sandbox, setSandbox] = useState(true);
   const [registering, setRegistering] = useState(false);
@@ -49,6 +49,15 @@ export default function PreviewDemo() {
     elevenLabs.getAgents().then(d => setAgents(d.agents || [])).catch(() => {});
     return () => { sessionRef.current?.stop(); };
   }, []);
+
+  // Keep the demo in sync with whatever is marked "Selected for Demo" elsewhere in Ellux.
+  useEffect(() => {
+    if (selectedAgent?.id) persist(LS_AGENT_ID, selectedAgent.id, setAgentId);
+  }, [selectedAgent?.id]);
+
+  useEffect(() => {
+    if (selectedAvatar?.id) persist(LS_AVATAR_ID, selectedAvatar.id, setAvatarId);
+  }, [selectedAvatar?.id]);
 
   function persist(key, val, setter) {
     setter(val);
@@ -86,6 +95,23 @@ export default function PreviewDemo() {
 
     setStarting(true);
     try {
+      if (selectedVoice?.id) {
+        try {
+          const detail = await elevenLabs.getAgent(agentId);
+          if (detail.conversation_config?.tts?.voice_id !== selectedVoice.id) {
+            await elevenLabs.updateAgent(agentId, {
+              name: detail.name,
+              conversation_config: {
+                ...detail.conversation_config,
+                tts: { ...detail.conversation_config?.tts, voice_id: selectedVoice.id },
+              },
+            });
+          }
+        } catch (e) {
+          showToast(`Could not apply selected voice: ${e.message}`, 'error');
+        }
+      }
+
       const body = {
         mode: 'LITE',
         avatar_id: sandbox ? SANDBOX_AVATAR_ID : avatarId,
@@ -163,6 +189,15 @@ export default function PreviewDemo() {
           End-to-end test bench — LiveAvatar streaming session driven by an ElevenLabs agent, configured from Ellux.
         </p>
       </div>
+
+      {(selectedAgent || selectedAvatar || selectedVoice) && (
+        <div className="glass rounded-xl p-4 flex flex-wrap gap-2" style={{ borderColor: 'rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.04)' }}>
+          <span className="text-xs font-semibold text-green-400 flex items-center gap-1.5"><Sparkles size={12} /> Selected for Demo:</span>
+          {selectedAgent && <span className="badge badge-green">Agent: {selectedAgent.name}</span>}
+          {selectedAvatar && <span className="badge badge-green">Avatar: {selectedAvatar.name}</span>}
+          {selectedVoice && <span className="badge badge-green">Voice: {selectedVoice.name}</span>}
+        </div>
+      )}
 
       {!live && (
         <div className="glass-card rounded-xl p-5 space-y-4">

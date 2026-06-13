@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mic, Search, Save, RefreshCw, ChevronDown, ChevronUp, Play, Pause } from 'lucide-react';
+import { Mic, Search, Save, RefreshCw, ChevronDown, ChevronUp, Play, Pause, Sparkles } from 'lucide-react';
 import { elevenLabs } from '../lib/api';
 import { useApp } from '../lib/store';
 
@@ -14,7 +14,8 @@ function VoiceCard({ voice, onSave }) {
   const [open, setOpen] = useState(false);
   const [settings, setSettings] = useState(voice.settings || { stability: 0.5, similarity_boost: 0.75, style: 0, use_speaker_boost: true });
   const [saving, setSaving] = useState(false);
-  const { showToast } = useApp();
+  const { showToast, selectedVoice, setSelectedVoice } = useApp();
+  const isSelected = selectedVoice?.id === voice.voice_id;
 
   async function handleSave() {
     setSaving(true);
@@ -33,10 +34,13 @@ function VoiceCard({ voice, onSave }) {
   const category = voice.category || 'custom';
 
   return (
-    <div className="glass-card rounded-xl overflow-hidden">
-      <button
+    <div className={`glass-card rounded-xl overflow-hidden ${isSelected ? 'ring-2 ring-cyan-400' : ''}`}>
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-4 p-4 text-left"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setOpen(!open); }}
+        className="w-full flex items-center gap-4 p-4 text-left cursor-pointer"
       >
         <div className="w-10 h-10 rounded-full accent-gradient flex items-center justify-center flex-shrink-0">
           <Mic size={16} className="text-white" />
@@ -47,10 +51,19 @@ function VoiceCard({ voice, onSave }) {
             {labels.gender && <span className="badge badge-blue">{labels.gender}</span>}
             {labels.accent && <span className="badge badge-purple">{labels.accent}</span>}
             <span className="badge badge-amber">{category}</span>
+            {isSelected && <span className="badge badge-green">Selected for Demo</span>}
           </div>
         </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); setSelectedVoice({ id: voice.voice_id, name: voice.name }); }}
+          className={isSelected ? 'btn-primary' : 'btn-ghost'}
+          title={isSelected ? 'Deselect for demo' : 'Use this voice in the demo'}
+          style={{ padding: '6px 10px' }}
+        >
+          <Sparkles size={13} />
+        </button>
         {open ? <ChevronUp size={16} className="text-slate-500 flex-shrink-0" /> : <ChevronDown size={16} className="text-slate-500 flex-shrink-0" />}
-      </button>
+      </div>
 
       {open && (
         <div className="px-4 pb-4 space-y-4 border-t" style={{ borderColor: 'rgba(0,198,255,0.08)' }}>

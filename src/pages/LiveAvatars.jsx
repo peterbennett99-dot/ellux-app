@@ -1,15 +1,23 @@
 import { useState, useEffect } from 'react';
-import { Video, RefreshCw, ChevronDown, ChevronUp, Play, ExternalLink, Square, Globe, User } from 'lucide-react';
+import { Video, RefreshCw, ChevronDown, ChevronUp, Play, ExternalLink, Square, Globe, User, Sparkles } from 'lucide-react';
 import { liveAvatar } from '../lib/api';
 import { useApp } from '../lib/store';
 
 function AvatarCard({ avatar, onStartSession }) {
   const [open, setOpen] = useState(false);
   const [starting, setStarting] = useState(false);
+  const { selectedAvatar, setSelectedAvatar } = useApp();
+  const isSelected = selectedAvatar?.id === avatar.id;
 
   return (
-    <div className="glass-card rounded-xl overflow-hidden">
-      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center gap-3 p-4 text-left">
+    <div className={`glass-card rounded-xl overflow-hidden ${isSelected ? 'ring-2 ring-cyan-400' : ''}`}>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen(o => !o)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setOpen(o => !o); }}
+        className="w-full flex items-center gap-3 p-4 text-left cursor-pointer"
+      >
         {avatar.preview_url ? (
           <img src={avatar.preview_url} alt={avatar.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
         ) : (
@@ -23,10 +31,19 @@ function AvatarCard({ avatar, onStartSession }) {
             {avatar.type && <span className="badge badge-blue">{avatar.type}</span>}
             {avatar.status && <span className={`badge ${avatar.status === 'ACTIVE' ? 'badge-green' : 'badge-amber'}`}>{avatar.status}</span>}
             {avatar.is_1080p && <span className="badge badge-purple">1080p</span>}
+            {isSelected && <span className="badge badge-green">Selected for Demo</span>}
           </div>
         </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); setSelectedAvatar({ id: avatar.id, name: avatar.name, preview_url: avatar.preview_url }); }}
+          className={isSelected ? 'btn-primary' : 'btn-ghost'}
+          title={isSelected ? 'Deselect for demo' : 'Use this avatar in the demo'}
+          style={{ padding: '6px 10px' }}
+        >
+          <Sparkles size={13} />
+        </button>
         {open ? <ChevronUp size={14} className="text-slate-500" /> : <ChevronDown size={14} className="text-slate-500" />}
-      </button>
+      </div>
 
       {open && (
         <div className="px-4 pb-4 border-t space-y-3" style={{ borderColor: 'rgba(0,198,255,0.08)' }}>
