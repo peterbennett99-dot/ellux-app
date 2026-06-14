@@ -11,6 +11,7 @@ import LiveAvatars from './pages/LiveAvatars';
 import N8nWorkflows from './pages/N8nWorkflows';
 import PreviewDemo from './pages/PreviewDemo';
 import EmbedWidget from './pages/EmbedWidget';
+import Salesforce from './pages/Salesforce';
 import Settings from './pages/Settings';
 
 const PAGES = {
@@ -22,6 +23,7 @@ const PAGES = {
   n8n: N8nWorkflows,
   'preview-demo': PreviewDemo,
   'embed-widget': EmbedWidget,
+  salesforce: Salesforce,
   settings: Settings,
 };
 

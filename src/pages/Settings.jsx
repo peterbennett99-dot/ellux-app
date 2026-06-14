@@ -30,6 +30,22 @@ const FIELDS = [
     ],
     hint: 'Settings → API in your workflow instance. Leave blank to use only webhook triggers.',
   },
+  {
+    section: 'Salesforce',
+    color: '#10b981',
+    fields: [
+      { key: 'sf_instance_url', label: 'Instance URL', placeholder: 'https://yourorg.my.salesforce.com', secret: false },
+      { key: 'sf_access_token', label: 'Access Token', placeholder: 'Bearer token', secret: true },
+      { key: 'sf_api_version', label: 'API Version', placeholder: 'v59.0', secret: false },
+      { key: 'sf_login_url', label: 'Login URL (for Connect)', placeholder: 'https://login.salesforce.com', secret: false },
+      { key: 'sf_client_id', label: 'Connected App Consumer Key (for Connect)', placeholder: '3MVG9...', secret: false },
+      { key: 'sf_client_secret', label: 'Connected App Consumer Secret (for Connect)', placeholder: '••••••••', secret: true },
+      { key: 'sf_username', label: 'Username (for Connect)', placeholder: 'you@org.com', secret: false },
+      { key: 'sf_password', label: 'Password + Security Token (for Connect)', placeholder: 'password+token', secret: true },
+    ],
+    docsUrl: 'https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/',
+    hint: 'Paste an Instance URL + Access Token directly, or fill in the Connect fields and use "Connect" on the Salesforce page to fetch them via the password OAuth flow. The org\'s Connected App must allow this flow and CORS for this site.',
+  },
 ];
 
 function SecretInput({ field, value, onChange }) {

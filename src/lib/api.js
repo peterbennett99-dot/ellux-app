@@ -219,3 +219,94 @@ export const n8n = {
   activateWorkflow: (id) => n8nPost(`/api/v1/workflows/${id}/activate`, {}),
   deactivateWorkflow: (id) => n8nPost(`/api/v1/workflows/${id}/deactivate`, {}),
 };
+
+// ── Salesforce ──────────────────────────────────────────────────────────────
+const SF_INSTANCE = () => getKey('sf_instance_url').replace(/\/+$/, '');
+const SF_TOKEN = () => getKey('sf_access_token');
+const SF_VERSION = () => getKey('sf_api_version') || 'v59.0';
+const SF_LOGIN_URL = () => (getKey('sf_login_url') || 'https://login.salesforce.com').replace(/\/+$/, '');
+
+async function sfFetch(path, opts = {}) {
+  if (!SF_INSTANCE() || !SF_TOKEN()) throw new Error('Salesforce is not connected — add your Instance URL and Access Token in Settings.');
+  const r = await fetch(`${SF_INSTANCE()}${path}`, {
+    ...opts,
+    headers: { Authorization: `Bearer ${SF_TOKEN()}`, 'Content-Type': 'application/json', ...opts.headers },
+  });
+  if (!r.ok) throw new Error(`Salesforce ${r.status}: ${await r.text()}`);
+  return r.status === 204 ? null : r.json();
+}
+
+// Escapes single quotes for use inside a SOQL string literal.
+function soqlEscape(value) {
+  return String(value).replace(/'/g, "\\'");
+}
+
+export const salesforce = {
+  isConnected: () => !!(SF_INSTANCE() && SF_TOKEN()),
+
+  // Resource-Owner Password Credentials flow: exchanges Connected App
+  // credentials + username/password(+security token) for an access token.
+  // Requires the org's Connected App to allow this flow and CORS for this origin.
+  authenticate: async ({ clientId, clientSecret, username, password }) => {
+    const params = new URLSearchParams({
+      grant_type: 'password',
+      client_id: clientId,
+      client_secret: clientSecret,
+      username,
+      password,
+    });
+    const r = await fetch(`${SF_LOGIN_URL()}/services/oauth2/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params,
+    });
+    if (!r.ok) throw new Error(`Salesforce auth ${r.status}: ${await r.text()}`);
+    const data = await r.json();
+    localStorage.setItem('sf_access_token', data.access_token);
+    localStorage.setItem('sf_instance_url', data.instance_url);
+    return data;
+  },
+
+  // Simple connectivity check — fetches org limits, which any authenticated user can read.
+  testConnection: () => sfFetch(`/services/data/${SF_VERSION()}/limits`),
+
+  query: (soql) => sfFetch(`/services/data/${SF_VERSION()}/query?q=${encodeURIComponent(soql)}`),
+
+  createRecord: (sobject, fields) => sfFetch(`/services/data/${SF_VERSION()}/sobjects/${sobject}`, {
+    method: 'POST',
+    body: JSON.stringify(fields),
+  }),
+
+  updateRecord: (sobject, id, fields) => sfFetch(`/services/data/${SF_VERSION()}/sobjects/${sobject}/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(fields),
+  }),
+
+  findContactByEmail: async (email) => {
+    const res = await salesforce.query(`SELECT Id, FirstName, LastName, Email, Phone FROM Contact WHERE Email = '${soqlEscape(email)}' LIMIT 1`);
+    return res.records?.[0] || null;
+  },
+
+  findContactByPhone: async (phone) => {
+    const res = await salesforce.query(`SELECT Id, FirstName, LastName, Email, Phone FROM Contact WHERE Phone = '${soqlEscape(phone)}' LIMIT 1`);
+    return res.records?.[0] || null;
+  },
+
+  findLeadByEmail: async (email) => {
+    const res = await salesforce.query(`SELECT Id, FirstName, LastName, Email, Phone, Company FROM Lead WHERE Email = '${soqlEscape(email)}' AND IsConverted = false LIMIT 1`);
+    return res.records?.[0] || null;
+  },
+
+  findLeadByPhone: async (phone) => {
+    const res = await salesforce.query(`SELECT Id, FirstName, LastName, Email, Phone, Company FROM Lead WHERE Phone = '${soqlEscape(phone)}' AND IsConverted = false LIMIT 1`);
+    return res.records?.[0] || null;
+  },
+
+  // Contacts represent known people (typically linked to an Account in Salesforce).
+  createContact: (fields) => salesforce.createRecord('Contact', fields),
+
+  // Leads represent prospects not yet qualified into Accounts/Contacts.
+  createLead: (fields) => salesforce.createRecord('Lead', fields),
+
+  createTask: (fields) => salesforce.createRecord('Task', fields),
+};
