@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import {
   LayoutDashboard, Mic, Bot, Video, Workflow,
-  BarChart2, Settings, ChevronRight, Zap, Sparkles, BookOpen
+  BarChart2, Settings, ChevronRight, Zap, Sparkles, BookOpen, Code2
 } from 'lucide-react';
 import { useApp } from '../lib/store';
 
@@ -16,6 +16,7 @@ const NAV = [
   { id: 'n8n', label: 'Workflows', icon: Workflow },
   { id: 'divider5', divider: true, label: 'TESTING' },
   { id: 'preview-demo', label: 'Preview & Demo', icon: Sparkles },
+  { id: 'embed-widget', label: 'Embed', icon: Code2 },
   { id: 'divider4', divider: true, label: 'SYSTEM' },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];

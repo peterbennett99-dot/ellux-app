@@ -1,4 +1,4 @@
-import { LayoutDashboard, Mic, Bot, Video, Workflow, BarChart2, Settings, Sparkles, BookOpen } from 'lucide-react';
+import { LayoutDashboard, Mic, Bot, Video, Workflow, BarChart2, Settings, Sparkles, BookOpen, Code2 } from 'lucide-react';
 import { useApp } from '../lib/store';
 
 const NAV = [
@@ -9,6 +9,7 @@ const NAV = [
   { id: 'xi-knowledge', label: 'Knowledge', icon: BookOpen },
   { id: 'n8n', label: 'Workflows', icon: Workflow },
   { id: 'preview-demo', label: 'Demo', icon: Sparkles },
+  { id: 'embed-widget', label: 'Embed', icon: Code2 },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 

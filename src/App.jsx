@@ -11,6 +11,7 @@ import XiReports from './pages/XiReports';
 import LiveAvatars from './pages/LiveAvatars';
 import N8nWorkflows from './pages/N8nWorkflows';
 import PreviewDemo from './pages/PreviewDemo';
+import EmbedWidget from './pages/EmbedWidget';
 import Settings from './pages/Settings';
 
 const PAGES = {
@@ -22,6 +23,7 @@ const PAGES = {
   'live-avatars': LiveAvatars,
   n8n: N8nWorkflows,
   'preview-demo': PreviewDemo,
+  'embed-widget': EmbedWidget,
   settings: Settings,
 };
 
