@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import {
   LayoutDashboard, Mic, Bot, Video, Workflow,
-  BarChart2, Settings, ChevronRight, Zap, Sparkles, BookOpen, Code2
+  Settings, ChevronRight, Zap, Sparkles, BookOpen, Code2
 } from 'lucide-react';
 import { useApp } from '../lib/store';
 
@@ -9,7 +9,6 @@ const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'xi-voices', label: 'Voices', icon: Mic },
   { id: 'xi-agents', label: 'Agents', icon: Bot },
-  { id: 'xi-reports', label: 'Conversations', icon: BarChart2 },
   { id: 'live-avatars', label: 'Avatars', icon: Video },
   { id: 'divider6', divider: true, label: 'KNOWLEDGE BASE' },
   { id: 'xi-knowledge', label: 'Knowledge Base', icon: BookOpen },
