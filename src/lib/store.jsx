@@ -12,9 +12,18 @@ function loadSelection(key) {
   try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; }
 }
 
+// If we're returning from the Salesforce SSO redirect (an OAuth `code` in the
+// URL while a PKCE flow is in progress), land back on the Salesforce page so
+// it can complete the token exchange.
+function initialPage() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('code') && sessionStorage.getItem('sf_oauth_state')) return 'salesforce';
+  return 'dashboard';
+}
+
 export function AppProvider({ children }) {
   const [toast, setToast] = useState(null);
-  const [activePage, setActivePage] = useState('dashboard');
+  const [activePage, setActivePage] = useState(initialPage);
 
   const [selectedVoice, setSelectedVoiceState] = useState(() => loadSelection(SEL_KEYS.voice));
   const [selectedAgent, setSelectedAgentState] = useState(() => loadSelection(SEL_KEYS.agent));

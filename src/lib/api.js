@@ -241,6 +241,26 @@ function soqlEscape(value) {
   return String(value).replace(/'/g, "\\'");
 }
 
+// ── PKCE helpers for the OAuth 2.0 Authorization Code (SSO) flow ────────────
+function base64UrlEncode(buffer) {
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function randomString(len = 64) {
+  const arr = new Uint8Array(len);
+  crypto.getRandomValues(arr);
+  return base64UrlEncode(arr);
+}
+
+async function sha256Base64Url(input) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return base64UrlEncode(digest);
+}
+
+const SF_PKCE_VERIFIER_KEY = 'sf_pkce_verifier';
+const SF_OAUTH_STATE_KEY = 'sf_oauth_state';
+
 export const salesforce = {
   isConnected: () => !!(SF_INSTANCE() && SF_TOKEN()),
 
@@ -265,6 +285,83 @@ export const salesforce = {
     localStorage.setItem('sf_access_token', data.access_token);
     localStorage.setItem('sf_instance_url', data.instance_url);
     return data;
+  },
+
+  // SSO (OAuth 2.0 Authorization Code + PKCE): builds the Salesforce login/
+  // consent URL to redirect the browser to. No client secret required —
+  // the Connected App must have "Require Proof Key for Code Exchange (PKCE)"
+  // enabled and this app's URL listed as a Callback URL.
+  getAuthorizeUrl: async ({ clientId, loginUrl, redirectUri }) => {
+    const verifier = randomString();
+    const state = randomString(16);
+    sessionStorage.setItem(SF_PKCE_VERIFIER_KEY, verifier);
+    sessionStorage.setItem(SF_OAUTH_STATE_KEY, state);
+    const challenge = await sha256Base64Url(verifier);
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      code_challenge: challenge,
+      code_challenge_method: 'S256',
+      scope: 'api refresh_token',
+      state,
+    });
+    return `${(loginUrl || 'https://login.salesforce.com').replace(/\/+$/, '')}/services/oauth2/authorize?${params.toString()}`;
+  },
+
+  // Completes the SSO flow: exchanges the authorization code (from the
+  // redirect back to this app) for an access token + instance URL.
+  exchangeCodeForToken: async ({ code, state, clientId, loginUrl, redirectUri }) => {
+    const expectedState = sessionStorage.getItem(SF_OAUTH_STATE_KEY);
+    if (expectedState && state && expectedState !== state) {
+      throw new Error('Salesforce SSO failed: state mismatch (possible CSRF). Please try connecting again.');
+    }
+    const verifier = sessionStorage.getItem(SF_PKCE_VERIFIER_KEY) || '';
+    const params = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      code_verifier: verifier,
+    });
+    const r = await fetch(`${(loginUrl || 'https://login.salesforce.com').replace(/\/+$/, '')}/services/oauth2/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params,
+    });
+    sessionStorage.removeItem(SF_PKCE_VERIFIER_KEY);
+    sessionStorage.removeItem(SF_OAUTH_STATE_KEY);
+    if (!r.ok) throw new Error(`Salesforce SSO ${r.status}: ${await r.text()}`);
+    const data = await r.json();
+    localStorage.setItem('sf_access_token', data.access_token);
+    localStorage.setItem('sf_instance_url', data.instance_url);
+    if (data.refresh_token) localStorage.setItem('sf_refresh_token', data.refresh_token);
+    return data;
+  },
+
+  // Refreshes the access token using a previously-issued refresh token.
+  refreshAccessToken: async ({ clientId, loginUrl }) => {
+    const refreshToken = getKey('sf_refresh_token');
+    if (!refreshToken) throw new Error('No Salesforce refresh token available — reconnect via SSO.');
+    const params = new URLSearchParams({
+      grant_type: 'refresh_token',
+      client_id: clientId,
+      refresh_token: refreshToken,
+    });
+    const r = await fetch(`${(loginUrl || 'https://login.salesforce.com').replace(/\/+$/, '')}/services/oauth2/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params,
+    });
+    if (!r.ok) throw new Error(`Salesforce token refresh ${r.status}: ${await r.text()}`);
+    const data = await r.json();
+    localStorage.setItem('sf_access_token', data.access_token);
+    if (data.instance_url) localStorage.setItem('sf_instance_url', data.instance_url);
+    return data;
+  },
+
+  disconnect: () => {
+    ['sf_access_token', 'sf_instance_url', 'sf_refresh_token'].forEach(k => localStorage.removeItem(k));
   },
 
   // Simple connectivity check — fetches org limits, which any authenticated user can read.

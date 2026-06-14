@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
 import {
   Cloud, RefreshCw, Plus, X, CheckCircle2, XCircle, User, Briefcase,
-  MessageSquare, Link2, ExternalLink, Wifi, WifiOff,
+  MessageSquare, Link2, ExternalLink, Wifi, WifiOff, LogIn, LogOut, Copy, Check,
 } from 'lucide-react';
 import { elevenLabs, salesforce } from '../lib/api';
 import { useApp } from '../lib/store';
+
+// The Connected App's "Callback URL" must match this exactly.
+function getRedirectUri() {
+  return `${window.location.origin}${window.location.pathname}`;
+}
 
 // Pulls likely contact details (name/email/phone) out of a conversation's
 // dynamic variables and data-collection results — agents vary in what they
@@ -177,6 +182,8 @@ export default function Salesforce() {
   const [connected, setConnected] = useState(salesforce.isConnected());
   const [testing, setTesting] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [ssoLoading, setSsoLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -196,6 +203,74 @@ export default function Salesforce() {
   }
 
   useEffect(() => { loadConversations(); }, []);
+
+  // Completes the SSO redirect: if the URL carries an OAuth `code`, exchange
+  // it for tokens and clean the query string out of the address bar.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const errorParam = params.get('error');
+    if (!code && !errorParam) return;
+
+    if (errorParam) {
+      showToast(`Salesforce SSO error: ${params.get('error_description') || errorParam}`, 'error');
+      window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+
+    (async () => {
+      setSsoLoading(true);
+      try {
+        await salesforce.exchangeCodeForToken({
+          code,
+          state: params.get('state'),
+          clientId: localStorage.getItem('sf_client_id') || '',
+          loginUrl: localStorage.getItem('sf_login_url') || 'https://login.salesforce.com',
+          redirectUri: getRedirectUri(),
+        });
+        setConnected(true);
+        showToast('Signed in to Salesforce', 'success');
+      } catch (e) {
+        showToast(e.message, 'error');
+      } finally {
+        setSsoLoading(false);
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleSsoLogin() {
+    const clientId = localStorage.getItem('sf_client_id') || '';
+    if (!clientId) {
+      showToast('Add your Connected App Consumer Key (sf_client_id) in Settings first', 'error');
+      return;
+    }
+    setSsoLoading(true);
+    try {
+      const url = await salesforce.getAuthorizeUrl({
+        clientId,
+        loginUrl: localStorage.getItem('sf_login_url') || 'https://login.salesforce.com',
+        redirectUri: getRedirectUri(),
+      });
+      window.location.href = url;
+    } catch (e) {
+      showToast(e.message, 'error');
+      setSsoLoading(false);
+    }
+  }
+
+  function handleDisconnect() {
+    salesforce.disconnect();
+    setConnected(false);
+    showToast('Disconnected from Salesforce', 'info');
+  }
+
+  function copyRedirectUri() {
+    navigator.clipboard.writeText(getRedirectUri());
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
 
   async function handleTest() {
     setTesting(true);
@@ -291,6 +366,17 @@ export default function Salesforce() {
             {connected ? <Wifi size={10} /> : <WifiOff size={10} />}
             {connected ? 'Connected' : 'Not connected'}
           </span>
+          {connected ? (
+            <button onClick={handleDisconnect} className="btn-ghost">
+              <LogOut size={14} />
+              Disconnect
+            </button>
+          ) : (
+            <button onClick={handleSsoLogin} disabled={ssoLoading} className="btn-primary">
+              {ssoLoading ? <RefreshCw size={14} className="animate-spin" /> : <LogIn size={14} />}
+              {ssoLoading ? 'Signing in…' : 'Sign in with Salesforce'}
+            </button>
+          )}
           <button onClick={handleConnect} disabled={connecting} className="btn-ghost">
             {connecting ? <RefreshCw size={14} className="animate-spin" /> : <Link2 size={14} />}
             {connecting ? 'Connecting…' : 'Connect'}
@@ -305,13 +391,26 @@ export default function Salesforce() {
       {!connected && (
         <div className="glass rounded-xl p-4 flex gap-3" style={{ borderColor: 'rgba(245,158,11,0.2)', background: 'rgba(245,158,11,0.05)' }}>
           <Briefcase size={16} className="text-amber-400 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-slate-400">
-            Add your Salesforce Instance URL and Access Token in <strong className="text-slate-300">Settings</strong>, or fill in the
-            Connect fields there and click "Connect" above to fetch them automatically.{' '}
-            <a href="https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/" target="_blank" rel="noopener noreferrer" className="underline inline-flex items-center gap-1">
-              Docs <ExternalLink size={10} />
-            </a>
-          </p>
+          <div className="text-xs text-slate-400 space-y-2">
+            <p>
+              <strong className="text-slate-300">Sign in with Salesforce</strong> uses SSO (OAuth Authorization Code + PKCE) —
+              add your Connected App's Consumer Key as <code>sf_client_id</code> (and Login URL, if not production) in{' '}
+              <strong className="text-slate-300">Settings</strong>, then register this app's callback URL on the Connected App:
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="px-2 py-1 rounded-lg break-all" style={{ background: 'rgba(0,0,0,0.4)' }}>{getRedirectUri()}</code>
+              <button onClick={copyRedirectUri} className="btn-ghost flex-shrink-0" style={{ padding: '6px' }}>
+                {copied ? <Check size={12} /> : <Copy size={12} />}
+              </button>
+            </div>
+            <p>
+              Alternatively, paste a Salesforce Instance URL and Access Token directly in Settings, or fill in the
+              username/password Connect fields and click "Connect" above.{' '}
+              <a href="https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/" target="_blank" rel="noopener noreferrer" className="underline inline-flex items-center gap-1">
+                Docs <ExternalLink size={10} />
+              </a>
+            </p>
+          </div>
         </div>
       )}
 
