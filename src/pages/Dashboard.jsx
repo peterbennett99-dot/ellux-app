@@ -169,6 +169,8 @@ export default function Dashboard() {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [agentFilter, setAgentFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [convTab, setConvTab] = useState('all');
   const convListRef = useRef(null);
 
@@ -202,16 +204,29 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Apply date range filter (client-side) on top of fetched conversations
+  const fromTs = dateFrom ? new Date(dateFrom).getTime() : null;
+  const toTs = dateTo ? new Date(dateTo).getTime() + 86400000 - 1 : null;
+  const filteredConversations = conversations.filter(c => {
+    if (!fromTs && !toTs) return true;
+    const secs = c.start_time_unix_secs ?? c.metadata?.start_time_unix_secs;
+    if (secs == null) return true;
+    const ms = secs * 1000;
+    if (fromTs && ms < fromTs) return false;
+    if (toTs && ms > toTs) return false;
+    return true;
+  });
+
   const cards = [
     { label: 'Voices', value: stats.voices || '—', icon: Mic, color: '#00c6ff', page: 'xi-voices' },
     { label: 'Agents', value: stats.agents || '—', icon: Bot, color: '#7c3aed', page: 'xi-agents' },
-    { label: 'Conversations', value: conversations.length || '—', icon: Activity, color: '#10b981' },
+    { label: 'Conversations', value: filteredConversations.length || '—', icon: Activity, color: '#10b981' },
     { label: 'Workflows', value: '—', icon: Workflow, color: '#f59e0b', page: 'n8n' },
   ];
 
   // Build duration distribution for chart
   const buckets = { '0-1m': 0, '1-3m': 0, '3-5m': 0, '5-10m': 0, '10m+': 0 };
-  conversations.forEach(c => {
+  filteredConversations.forEach(c => {
     const s = c.call_duration_secs ?? c.metadata?.call_duration_secs ?? 0;
     if (s < 60) buckets['0-1m']++;
     else if (s < 180) buckets['1-3m']++;
@@ -222,15 +237,15 @@ export default function Dashboard() {
   const durationChartData = Object.entries(buckets).map(([name, count]) => ({ name, count }));
 
   // Group by evaluation criteria result (call_successful)
-  const passed = conversations.filter(c => (c.call_successful || c.analysis?.call_successful) === 'success');
-  const failed = conversations.filter(c => (c.call_successful || c.analysis?.call_successful) === 'failure');
-  const unevaluated = conversations.filter(c => {
+  const passed = filteredConversations.filter(c => (c.call_successful || c.analysis?.call_successful) === 'success');
+  const failed = filteredConversations.filter(c => (c.call_successful || c.analysis?.call_successful) === 'failure');
+  const unevaluated = filteredConversations.filter(c => {
     const r = c.call_successful || c.analysis?.call_successful;
     return r !== 'success' && r !== 'failure';
   });
 
-  const avgDuration = duration(Math.round(conversations.reduce((a, c) => a + (c.call_duration_secs ?? c.metadata?.call_duration_secs ?? 0), 0) / (conversations.length || 1)));
-  const completed = conversations.filter(c => c.status === 'done').length;
+  const avgDuration = duration(Math.round(filteredConversations.reduce((a, c) => a + (c.call_duration_secs ?? c.metadata?.call_duration_secs ?? 0), 0) / (filteredConversations.length || 1)));
+  const completed = filteredConversations.filter(c => c.status === 'done').length;
 
   return (
     <div className="fade-in p-6 space-y-6">
@@ -277,7 +292,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <button onClick={() => goToConvTab('all')} className="glass-card rounded-xl p-4 text-center hover:bg-white/[0.03] transition-colors">
             <MessageSquare size={16} className="mx-auto mb-2 text-cyan-400" />
-            <p className="text-2xl font-bold text-white">{conversations.length || '—'}</p>
+            <p className="text-2xl font-bold text-white">{filteredConversations.length || '—'}</p>
             <p className="text-xs text-slate-500 mt-0.5">Overall</p>
           </button>
           <button onClick={() => goToConvTab('passed')} className="glass-card rounded-xl p-4 text-center hover:bg-white/[0.03] transition-colors">
@@ -339,7 +354,7 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
 
-        {conversations.length > 0 && (
+        {filteredConversations.length > 0 && (
           <div className="glass-card rounded-xl p-5">
             <p className="text-sm font-semibold text-white mb-4">Duration Distribution</p>
             <ResponsiveContainer width="100%" height={160}>
@@ -363,13 +378,32 @@ export default function Dashboard() {
       </div>
 
       {/* Filter */}
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <input
           value={agentFilter}
           onChange={e => setAgentFilter(e.target.value)}
           placeholder="Filter conversations by Agent ID…"
-          style={{ flex: 1 }}
+          className="sm:flex-1"
         />
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-slate-500 flex-shrink-0">From</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+            className="flex-1 sm:flex-initial"
+          />
+          <label className="text-xs text-slate-500 flex-shrink-0">To</label>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={e => setDateTo(e.target.value)}
+            className="flex-1 sm:flex-initial"
+          />
+          {(dateFrom || dateTo) && (
+            <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="btn-ghost flex-shrink-0">Clear</button>
+          )}
+        </div>
         <button onClick={loadConversations} className="btn-ghost flex-shrink-0">Apply</button>
       </div>
 
@@ -377,7 +411,7 @@ export default function Dashboard() {
       <div ref={convListRef}>
         <div className="flex gap-1 p-1 rounded-xl mb-4" style={{ background: 'rgba(0,0,0,0.3)' }}>
           {[
-            { id: 'all', label: 'All', count: conversations.length },
+            { id: 'all', label: 'All', count: filteredConversations.length },
             { id: 'passed', label: 'Passed', count: passed.length },
             { id: 'failed', label: 'Failed', count: failed.length },
             { id: 'unevaluated', label: 'Unevaluated', count: unevaluated.length },
@@ -404,9 +438,9 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="space-y-3">
-            {(convTab === 'all' ? conversations : convTab === 'passed' ? passed : convTab === 'failed' ? failed : unevaluated)
+            {(convTab === 'all' ? filteredConversations : convTab === 'passed' ? passed : convTab === 'failed' ? failed : unevaluated)
               .map(c => <ConvCard key={c.conversation_id} conv={c} />)}
-            {(convTab === 'all' ? conversations : convTab === 'passed' ? passed : convTab === 'failed' ? failed : unevaluated).length === 0 && (
+            {(convTab === 'all' ? filteredConversations : convTab === 'passed' ? passed : convTab === 'failed' ? failed : unevaluated).length === 0 && (
               <div className="text-center py-12 text-slate-500">
                 <HelpCircle size={32} className="mx-auto mb-3 opacity-30" />
                 No conversations in this category.
