@@ -61,15 +61,15 @@ function ConvCard({ conv }) {
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <span className={`badge ${badgeCls}`}>{status}</span>
             {resultBadge}
-            {conv.metadata?.start_time_unix_secs && (
+            {(conv.start_time_unix_secs ?? conv.metadata?.start_time_unix_secs) && (
               <span className="text-xs text-slate-500">
-                {new Date(conv.metadata.start_time_unix_secs * 1000).toLocaleDateString()}
+                {new Date((conv.start_time_unix_secs ?? conv.metadata.start_time_unix_secs) * 1000).toLocaleDateString()}
               </span>
             )}
-            {conv.metadata?.call_duration_secs !== undefined && (
+            {(conv.call_duration_secs ?? conv.metadata?.call_duration_secs) !== undefined && (
               <span className="text-xs text-slate-500 flex items-center gap-1">
                 <Clock size={10} />
-                {duration(conv.metadata.call_duration_secs)}
+                {duration(conv.call_duration_secs ?? conv.metadata.call_duration_secs)}
               </span>
             )}
           </div>
@@ -161,7 +161,7 @@ export default function XiReports() {
   // Build duration distribution for chart
   const buckets = { '0-1m': 0, '1-3m': 0, '3-5m': 0, '5-10m': 0, '10m+': 0 };
   conversations.forEach(c => {
-    const s = c.metadata?.call_duration_secs || 0;
+    const s = c.call_duration_secs ?? c.metadata?.call_duration_secs ?? 0;
     if (s < 60) buckets['0-1m']++;
     else if (s < 180) buckets['1-3m']++;
     else if (s < 300) buckets['3-5m']++;
@@ -195,7 +195,7 @@ export default function XiReports() {
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'Total Interactions', value: conversations.length },
-          { label: 'Avg Duration', value: duration(Math.round(conversations.reduce((a, c) => a + (c.metadata?.call_duration_secs || 0), 0) / (conversations.length || 1))) },
+          { label: 'Avg Duration', value: duration(Math.round(conversations.reduce((a, c) => a + (c.call_duration_secs ?? c.metadata?.call_duration_secs ?? 0), 0) / (conversations.length || 1))) },
           { label: 'Completed', value: conversations.filter(c => c.status === 'done').length },
         ].map(s => (
           <div key={s.label} className="glass-card rounded-xl p-3 text-center">
