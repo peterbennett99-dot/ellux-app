@@ -407,3 +407,76 @@ export const salesforce = {
 
   createTask: (fields) => salesforce.createRecord('Task', fields),
 };
+
+// ── HubSpot ─────────────────────────────────────────────────────────────────
+const HS_TOKEN = () => getKey('hs_access_token');
+const HS_BASE = 'https://api.hubapi.com';
+
+async function hsFetch(path, opts = {}) {
+  if (!HS_TOKEN()) throw new Error('HubSpot is not connected — add your Private App Access Token in Settings.');
+  const r = await fetch(`${HS_BASE}${path}`, {
+    ...opts,
+    headers: { Authorization: `Bearer ${HS_TOKEN()}`, 'Content-Type': 'application/json', ...opts.headers },
+  });
+  if (!r.ok) throw new Error(`HubSpot ${r.status}: ${await r.text()}`);
+  return r.status === 204 ? null : r.json();
+}
+
+// Association type ID for "note to contact" (HubSpot-defined default).
+const HS_NOTE_TO_CONTACT = 202;
+
+export const hubspot = {
+  isConnected: () => !!HS_TOKEN(),
+
+  disconnect: () => localStorage.removeItem('hs_access_token'),
+
+  // Simple connectivity check — lists a single contact.
+  testConnection: () => hsFetch('/crm/v3/objects/contacts?limit=1'),
+
+  searchContacts: (filters, properties) => hsFetch('/crm/v3/objects/contacts/search', {
+    method: 'POST',
+    body: JSON.stringify({ filterGroups: [{ filters }], properties, limit: 1 }),
+  }),
+
+  findContactByEmail: async (email) => {
+    const res = await hubspot.searchContacts(
+      [{ propertyName: 'email', operator: 'EQ', value: email }],
+      ['email', 'firstname', 'lastname', 'phone']
+    );
+    return res.results?.[0] || null;
+  },
+
+  findContactByPhone: async (phone) => {
+    const res = await hubspot.searchContacts(
+      [{ propertyName: 'phone', operator: 'EQ', value: phone }],
+      ['email', 'firstname', 'lastname', 'phone']
+    );
+    return res.results?.[0] || null;
+  },
+
+  createContact: (properties) => hsFetch('/crm/v3/objects/contacts', {
+    method: 'POST',
+    body: JSON.stringify({ properties }),
+  }),
+
+  updateContact: (id, properties) => hsFetch(`/crm/v3/objects/contacts/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ properties }),
+  }),
+
+  // Creates a Note engagement and associates it with a contact, so a synced
+  // conversation shows up on the contact's timeline.
+  createNoteForContact: (contactId, body) => hsFetch('/crm/v3/objects/notes', {
+    method: 'POST',
+    body: JSON.stringify({
+      properties: {
+        hs_note_body: body,
+        hs_timestamp: Date.now(),
+      },
+      associations: [{
+        to: { id: contactId },
+        types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: HS_NOTE_TO_CONTACT }],
+      }],
+    }),
+  }),
+};

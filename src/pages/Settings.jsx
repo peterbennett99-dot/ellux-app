@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Save, Eye, EyeOff, CheckCircle, ExternalLink, Key, Cloud, Wifi, WifiOff } from 'lucide-react';
+import { Save, Eye, EyeOff, CheckCircle, ExternalLink, Key, Cloud, Wifi, WifiOff, Flame } from 'lucide-react';
 import { useApp } from '../lib/store';
 import ExpandableSection from '../components/ExpandableSection';
 import SalesforceConnector from '../components/SalesforceConnector';
-import { salesforce } from '../lib/api';
+import HubSpotConnector from '../components/HubSpotConnector';
+import { salesforce, hubspot } from '../lib/api';
 
 const API_KEY_SECTIONS = [
   {
@@ -46,7 +47,11 @@ const SF_FIELDS = [
   { key: 'sf_password', label: 'Password + Security Token (for Connect)', placeholder: 'password+token', secret: true },
 ];
 
-const ALL_FIELDS = [...API_KEY_SECTIONS.flatMap(s => s.fields), ...SF_FIELDS];
+const HS_FIELDS = [
+  { key: 'hs_access_token', label: 'Private App Access Token', placeholder: 'pat-na1-…', secret: true },
+];
+
+const ALL_FIELDS = [...API_KEY_SECTIONS.flatMap(s => s.fields), ...SF_FIELDS, ...HS_FIELDS];
 
 function SecretInput({ field, value, onChange }) {
   const [show, setShow] = useState(false);
@@ -82,6 +87,7 @@ export default function Settings_() {
   const [vals, setVals] = useState({});
   const [saved, setSaved] = useState(false);
   const [sfConnected, setSfConnected] = useState(salesforce.isConnected());
+  const [hsConnected, setHsConnected] = useState(hubspot.isConnected());
 
   useEffect(() => {
     const loaded = {};
@@ -100,6 +106,7 @@ export default function Settings_() {
       else localStorage.removeItem(k);
     });
     setSfConnected(salesforce.isConnected());
+    setHsConnected(hubspot.isConnected());
     setSaved(true);
     showToast('Settings saved', 'success');
   }
@@ -191,6 +198,46 @@ export default function Settings_() {
         </div>
 
         <SalesforceConnector />
+      </ExpandableSection>
+
+      <ExpandableSection
+        title="HubSpot Connector"
+        subtitle="Sync conversations and add captured contacts in HubSpot"
+        icon={Flame}
+        color="#ff7a59"
+        badge={
+          <span className={`badge ${hsConnected ? 'badge-green' : 'badge-red'}`}>
+            {hsConnected ? <Wifi size={10} /> : <WifiOff size={10} />}
+            {hsConnected ? 'Connected' : 'Not connected'}
+          </span>
+        }
+      >
+        <div className="glass-card rounded-xl overflow-hidden">
+          <div
+            className="px-5 py-3 flex items-center justify-between"
+            style={{ borderBottom: '1px solid rgba(0,198,255,0.08)', background: '#ff7a590a' }}
+          >
+            <h3 className="text-sm font-bold" style={{ color: '#ff7a59' }}>Connection Settings</h3>
+            <a href="https://developers.hubspot.com/docs/api/private-apps" target="_blank" rel="noopener noreferrer" className="text-xs text-slate-500 flex items-center gap-1 hover:text-slate-300">
+              Docs <ExternalLink size={11} />
+            </a>
+          </div>
+          <div className="p-5 space-y-4">
+            {HS_FIELDS.map(f => (
+              <div key={f.key}>
+                <label className="text-xs font-medium text-slate-400 block mb-1">{f.label}</label>
+                <FieldInput field={f} value={vals[f.key] || ''} onChange={v => set(f.key, v)} />
+              </div>
+            ))}
+            <p className="text-xs text-slate-600">
+              Create a Private App in HubSpot (Settings → Integrations → Private Apps) with the{' '}
+              <code>crm.objects.contacts.read</code>, <code>crm.objects.contacts.write</code> and{' '}
+              <code>crm.objects.notes.write</code> scopes, then paste its access token above.
+            </p>
+          </div>
+        </div>
+
+        <HubSpotConnector />
       </ExpandableSection>
 
       <button onClick={saveAll} className="btn-primary w-full justify-center" style={{ padding: '14px' }}>

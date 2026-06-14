@@ -5,42 +5,11 @@ import {
 } from 'lucide-react';
 import { elevenLabs, salesforce } from '../lib/api';
 import { useApp } from '../lib/store';
+import { extractContactInfo, splitName } from '../lib/contactInfo';
 
 // The Connected App's "Callback URL" must match this exactly.
 function getRedirectUri() {
   return `${window.location.origin}${window.location.pathname}`;
-}
-
-// Pulls likely contact details (name/email/phone) out of a conversation's
-// dynamic variables and data-collection results — agents vary in what they
-// capture, so we scan by key pattern rather than a fixed schema.
-function extractContactInfo(conv) {
-  const vars = conv.conversation_initiation_client_data?.dynamic_variables || {};
-  const collected = conv.analysis?.data_collection_results || {};
-
-  const find = (re) => {
-    for (const [k, v] of Object.entries(vars)) {
-      if (re.test(k) && v) return String(v);
-    }
-    for (const [k, v] of Object.entries(collected)) {
-      const val = v?.value ?? v;
-      if (re.test(k) && val) return String(val);
-    }
-    return '';
-  };
-
-  return {
-    name: find(/name/i),
-    email: find(/email/i),
-    phone: find(/phone|number|mobile/i) || conv.metadata?.phone_call?.external_number || '',
-  };
-}
-
-function splitName(name) {
-  const parts = (name || '').trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return { first: '', last: '' };
-  if (parts.length === 1) return { first: '', last: parts[0] };
-  return { first: parts.slice(0, -1).join(' '), last: parts[parts.length - 1] };
 }
 
 function CreateContactPanel({ open, onClose }) {
