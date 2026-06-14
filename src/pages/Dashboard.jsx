@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Mic, Bot, Workflow, TrendingUp, Activity, CheckCircle2, XCircle, MessageSquare,
   RefreshCw, Clock, User, ChevronDown, ChevronUp, HelpCircle, BarChart2,
@@ -169,6 +169,13 @@ export default function Dashboard() {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [agentFilter, setAgentFilter] = useState('');
+  const [convTab, setConvTab] = useState('all');
+  const convListRef = useRef(null);
+
+  function goToConvTab(tab) {
+    setConvTab(tab);
+    convListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   async function loadConversations() {
     setLoading(true);
@@ -268,36 +275,36 @@ export default function Dashboard() {
           CONVERSATION INSIGHTS
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <div className="glass-card rounded-xl p-4 text-center">
+          <button onClick={() => goToConvTab('all')} className="glass-card rounded-xl p-4 text-center hover:bg-white/[0.03] transition-colors">
             <MessageSquare size={16} className="mx-auto mb-2 text-cyan-400" />
             <p className="text-2xl font-bold text-white">{conversations.length || '—'}</p>
             <p className="text-xs text-slate-500 mt-0.5">Overall</p>
-          </div>
-          <div className="glass-card rounded-xl p-4 text-center">
+          </button>
+          <button onClick={() => goToConvTab('passed')} className="glass-card rounded-xl p-4 text-center hover:bg-white/[0.03] transition-colors">
             <CheckCircle2 size={16} className="mx-auto mb-2 text-green-400" />
             <p className="text-2xl font-bold text-green-400">{passed.length}</p>
             <p className="text-xs text-slate-500 mt-0.5">Passed</p>
-          </div>
-          <div className="glass-card rounded-xl p-4 text-center">
+          </button>
+          <button onClick={() => goToConvTab('failed')} className="glass-card rounded-xl p-4 text-center hover:bg-white/[0.03] transition-colors">
             <XCircle size={16} className="mx-auto mb-2 text-red-400" />
             <p className="text-2xl font-bold text-red-400">{failed.length}</p>
             <p className="text-xs text-slate-500 mt-0.5">Failed</p>
-          </div>
-          <div className="glass-card rounded-xl p-4 text-center">
+          </button>
+          <button onClick={() => goToConvTab('unevaluated')} className="glass-card rounded-xl p-4 text-center hover:bg-white/[0.03] transition-colors">
             <HelpCircle size={16} className="mx-auto mb-2 text-slate-400" />
             <p className="text-2xl font-bold text-white">{unevaluated.length}</p>
             <p className="text-xs text-slate-500 mt-0.5">Unevaluated</p>
-          </div>
+          </button>
           <div className="glass-card rounded-xl p-4 text-center">
             <Clock size={16} className="mx-auto mb-2 text-cyan-400" />
             <p className="text-2xl font-bold text-white">{avgDuration}</p>
             <p className="text-xs text-slate-500 mt-0.5">Avg Duration</p>
           </div>
-          <div className="glass-card rounded-xl p-4 text-center">
+          <button onClick={() => goToConvTab('all')} className="glass-card rounded-xl p-4 text-center hover:bg-white/[0.03] transition-colors">
             <CheckCircle2 size={16} className="mx-auto mb-2 text-cyan-400" />
             <p className="text-2xl font-bold text-white">{completed}</p>
             <p className="text-xs text-slate-500 mt-0.5">Completed</p>
-          </div>
+          </button>
         </div>
         {passed.length === 0 && failed.length === 0 && conversations.length > 0 && (
           <p className="text-xs text-slate-500 text-center mt-3">
@@ -366,45 +373,48 @@ export default function Dashboard() {
         <button onClick={loadConversations} className="btn-ghost flex-shrink-0">Apply</button>
       </div>
 
-      {/* Conversation list */}
-      {loading ? (
-        <div className="text-center py-12 text-slate-500">
-          <RefreshCw size={24} className="animate-spin mx-auto mb-2" />
-          Loading conversations…
+      {/* Conversation tabs */}
+      <div ref={convListRef}>
+        <div className="flex gap-1 p-1 rounded-xl mb-4" style={{ background: 'rgba(0,0,0,0.3)' }}>
+          {[
+            { id: 'all', label: 'All', count: conversations.length },
+            { id: 'passed', label: 'Passed', count: passed.length },
+            { id: 'failed', label: 'Failed', count: failed.length },
+            { id: 'unevaluated', label: 'Unevaluated', count: unevaluated.length },
+          ].map(t => (
+            <button
+              key={t.id}
+              onClick={() => setConvTab(t.id)}
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${convTab === t.id ? 'tab-active' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              {t.label} ({t.count})
+            </button>
+          ))}
         </div>
-      ) : conversations.length === 0 ? (
-        <div className="text-center py-12 text-slate-500">
-          <MessageSquare size={32} className="mx-auto mb-3 opacity-30" />
-          No conversations found. Check your API key in Settings.
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {passed.length > 0 && (
-            <div className="space-y-3">
-              <p className="text-xs font-semibold tracking-widest text-green-400 flex items-center gap-1.5">
-                <CheckCircle2 size={12} /> PASSED ({passed.length})
-              </p>
-              {passed.map(c => <ConvCard key={c.conversation_id} conv={c} />)}
-            </div>
-          )}
-          {failed.length > 0 && (
-            <div className="space-y-3">
-              <p className="text-xs font-semibold tracking-widest text-red-400 flex items-center gap-1.5">
-                <XCircle size={12} /> FAILED ({failed.length})
-              </p>
-              {failed.map(c => <ConvCard key={c.conversation_id} conv={c} />)}
-            </div>
-          )}
-          {unevaluated.length > 0 && (
-            <div className="space-y-3">
-              <p className="text-xs font-semibold tracking-widest text-slate-500 flex items-center gap-1.5">
-                <HelpCircle size={12} /> UNEVALUATED ({unevaluated.length})
-              </p>
-              {unevaluated.map(c => <ConvCard key={c.conversation_id} conv={c} />)}
-            </div>
-          )}
-        </div>
-      )}
+
+        {loading ? (
+          <div className="text-center py-12 text-slate-500">
+            <RefreshCw size={24} className="animate-spin mx-auto mb-2" />
+            Loading conversations…
+          </div>
+        ) : conversations.length === 0 ? (
+          <div className="text-center py-12 text-slate-500">
+            <MessageSquare size={32} className="mx-auto mb-3 opacity-30" />
+            No conversations found. Check your API key in Settings.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {(convTab === 'all' ? conversations : convTab === 'passed' ? passed : convTab === 'failed' ? failed : unevaluated)
+              .map(c => <ConvCard key={c.conversation_id} conv={c} />)}
+            {(convTab === 'all' ? conversations : convTab === 'passed' ? passed : convTab === 'failed' ? failed : unevaluated).length === 0 && (
+              <div className="text-center py-12 text-slate-500">
+                <HelpCircle size={32} className="mx-auto mb-3 opacity-30" />
+                No conversations in this category.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
