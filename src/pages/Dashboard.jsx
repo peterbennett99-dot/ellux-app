@@ -239,45 +239,49 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Metrics & conversation data */}
+      {/* Overview strip */}
+      <div className="glass-card rounded-xl divide-y divide-white/5 sm:divide-y-0 sm:divide-x sm:flex" style={{ borderColor: 'rgba(0,198,255,0.08)' }}>
+        {cards.map(({ label, value, icon: Icon, color, page }) => (
+          <button
+            key={label}
+            onClick={() => page && setActivePage(page)}
+            className="flex-1 flex items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-white/[0.03]"
+          >
+            <div
+              className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: `${color}1a` }}
+            >
+              <Icon size={16} style={{ color }} />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-white leading-tight">{value}</p>
+              <p className="text-xs text-slate-500">{label}</p>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Conversation insights */}
       <div>
         <h2 className="text-sm font-semibold text-slate-400 mb-3 flex items-center gap-2">
           <Activity size={14} />
-          METRICS &amp; CONVERSATIONS
+          CONVERSATION INSIGHTS
         </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {cards.map(({ label, value, icon: Icon, color, page }) => (
-            <button
-              key={label}
-              onClick={() => page && setActivePage(page)}
-              className="glass-card rounded-xl p-4 text-left"
-            >
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center mb-3"
-                style={{ background: `${color}22` }}
-              >
-                <Icon size={16} style={{ color }} />
-              </div>
-              <p className="text-2xl font-bold text-white">{value}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{label}</p>
-            </button>
-          ))}
-        </div>
-        <div className="grid grid-cols-2 gap-3 mt-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <div className="glass-card rounded-xl p-4 text-center">
             <MessageSquare size={16} className="mx-auto mb-2 text-cyan-400" />
             <p className="text-2xl font-bold text-white">{conversations.length || '—'}</p>
-            <p className="text-xs text-slate-500 mt-0.5">Overall Interactions</p>
+            <p className="text-xs text-slate-500 mt-0.5">Overall</p>
           </div>
           <div className="glass-card rounded-xl p-4 text-center">
             <CheckCircle2 size={16} className="mx-auto mb-2 text-green-400" />
             <p className="text-2xl font-bold text-green-400">{passed.length}</p>
-            <p className="text-xs text-slate-500 mt-0.5">Passed Interactions</p>
+            <p className="text-xs text-slate-500 mt-0.5">Passed</p>
           </div>
           <div className="glass-card rounded-xl p-4 text-center">
             <XCircle size={16} className="mx-auto mb-2 text-red-400" />
             <p className="text-2xl font-bold text-red-400">{failed.length}</p>
-            <p className="text-xs text-slate-500 mt-0.5">Failed Interactions</p>
+            <p className="text-xs text-slate-500 mt-0.5">Failed</p>
           </div>
           <div className="glass-card rounded-xl p-4 text-center">
             <HelpCircle size={16} className="mx-auto mb-2 text-slate-400" />
