@@ -127,7 +127,6 @@ export default function Settings_() {
         subtitle="Agents, Avatars & Workflows"
         icon={Key}
         color="#00c6ff"
-        defaultOpen
       >
         {API_KEY_SECTIONS.map(({ section, color, fields, hint, docsUrl }) => (
           <div key={section} className="glass-card rounded-xl overflow-hidden">
@@ -160,7 +159,6 @@ export default function Settings_() {
         subtitle="Sync conversations and manage contacts & prospects in Salesforce"
         icon={Cloud}
         color="#10b981"
-        defaultOpen
         badge={
           <span className={`badge ${sfConnected ? 'badge-green' : 'badge-red'}`}>
             {sfConnected ? <Wifi size={10} /> : <WifiOff size={10} />}
