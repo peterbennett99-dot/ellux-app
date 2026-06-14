@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Settings, Save, Eye, EyeOff, CheckCircle, ExternalLink } from 'lucide-react';
+import { Save, Eye, EyeOff, CheckCircle, ExternalLink, Key, Cloud, Wifi, WifiOff } from 'lucide-react';
 import { useApp } from '../lib/store';
+import ExpandableSection from '../components/ExpandableSection';
+import SalesforceConnector from '../components/SalesforceConnector';
+import { salesforce } from '../lib/api';
 
-const FIELDS = [
+const API_KEY_SECTIONS = [
   {
     section: 'Agents',
     color: '#00c6ff',
@@ -30,23 +33,20 @@ const FIELDS = [
     ],
     hint: 'Settings → API in your workflow instance. Leave blank to use only webhook triggers.',
   },
-  {
-    section: 'Salesforce',
-    color: '#10b981',
-    fields: [
-      { key: 'sf_instance_url', label: 'Instance URL', placeholder: 'https://yourorg.my.salesforce.com', secret: false },
-      { key: 'sf_access_token', label: 'Access Token', placeholder: 'Bearer token', secret: true },
-      { key: 'sf_api_version', label: 'API Version', placeholder: 'v59.0', secret: false },
-      { key: 'sf_login_url', label: 'Login URL (for Connect)', placeholder: 'https://login.salesforce.com', secret: false },
-      { key: 'sf_client_id', label: 'Connected App Consumer Key (for Connect)', placeholder: '3MVG9...', secret: false },
-      { key: 'sf_client_secret', label: 'Connected App Consumer Secret (for Connect)', placeholder: '••••••••', secret: true },
-      { key: 'sf_username', label: 'Username (for Connect)', placeholder: 'you@org.com', secret: false },
-      { key: 'sf_password', label: 'Password + Security Token (for Connect)', placeholder: 'password+token', secret: true },
-    ],
-    docsUrl: 'https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/',
-    hint: 'Paste an Instance URL + Access Token directly, or fill in the Connect fields and use "Connect" on the Salesforce page to fetch them via the password OAuth flow. The org\'s Connected App must allow this flow and CORS for this site.',
-  },
 ];
+
+const SF_FIELDS = [
+  { key: 'sf_instance_url', label: 'Instance URL', placeholder: 'https://yourorg.my.salesforce.com', secret: false },
+  { key: 'sf_access_token', label: 'Access Token', placeholder: 'Bearer token', secret: true },
+  { key: 'sf_api_version', label: 'API Version', placeholder: 'v59.0', secret: false },
+  { key: 'sf_login_url', label: 'Login URL (for SSO / Connect)', placeholder: 'https://login.salesforce.com', secret: false },
+  { key: 'sf_client_id', label: 'Connected App Consumer Key (for SSO / Connect)', placeholder: '3MVG9...', secret: false },
+  { key: 'sf_client_secret', label: 'Connected App Consumer Secret (for Connect)', placeholder: '••••••••', secret: true },
+  { key: 'sf_username', label: 'Username (for Connect)', placeholder: 'you@org.com', secret: false },
+  { key: 'sf_password', label: 'Password + Security Token (for Connect)', placeholder: 'password+token', secret: true },
+];
+
+const ALL_FIELDS = [...API_KEY_SECTIONS.flatMap(s => s.fields), ...SF_FIELDS];
 
 function SecretInput({ field, value, onChange }) {
   const [show, setShow] = useState(false);
@@ -69,16 +69,23 @@ function SecretInput({ field, value, onChange }) {
   );
 }
 
+function FieldInput({ field, value, onChange }) {
+  return field.secret ? (
+    <SecretInput field={field} value={value} onChange={onChange} />
+  ) : (
+    <input value={value} onChange={e => onChange(e.target.value)} placeholder={field.placeholder} />
+  );
+}
+
 export default function Settings_() {
   const { showToast } = useApp();
   const [vals, setVals] = useState({});
   const [saved, setSaved] = useState(false);
+  const [sfConnected, setSfConnected] = useState(salesforce.isConnected());
 
   useEffect(() => {
     const loaded = {};
-    FIELDS.forEach(s => s.fields.forEach(f => {
-      loaded[f.key] = localStorage.getItem(f.key) || '';
-    }));
+    ALL_FIELDS.forEach(f => { loaded[f.key] = localStorage.getItem(f.key) || ''; });
     setVals(loaded);
   }, []);
 
@@ -92,6 +99,7 @@ export default function Settings_() {
       if (v) localStorage.setItem(k, v);
       else localStorage.removeItem(k);
     });
+    setSfConnected(salesforce.isConnected());
     setSaved(true);
     showToast('Settings saved', 'success');
   }
@@ -114,38 +122,78 @@ export default function Settings_() {
         </div>
       </div>
 
-      {FIELDS.map(({ section, color, fields, hint, docsUrl }) => (
-        <div key={section} className="glass-card rounded-xl overflow-hidden">
+      <ExpandableSection
+        title="API Keys"
+        subtitle="Agents, Avatars & Workflows"
+        icon={Key}
+        color="#00c6ff"
+        defaultOpen
+      >
+        {API_KEY_SECTIONS.map(({ section, color, fields, hint, docsUrl }) => (
+          <div key={section} className="glass-card rounded-xl overflow-hidden">
+            <div
+              className="px-5 py-3 flex items-center justify-between"
+              style={{ borderBottom: '1px solid rgba(0,198,255,0.08)', background: `${color}0a` }}
+            >
+              <h3 className="text-sm font-bold" style={{ color }}>{section}</h3>
+              {docsUrl && (
+                <a href={docsUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-slate-500 flex items-center gap-1 hover:text-slate-300">
+                  Docs <ExternalLink size={11} />
+                </a>
+              )}
+            </div>
+            <div className="p-5 space-y-4">
+              {fields.map(f => (
+                <div key={f.key}>
+                  <label className="text-xs font-medium text-slate-400 block mb-1">{f.label}</label>
+                  <FieldInput field={f} value={vals[f.key] || ''} onChange={v => set(f.key, v)} />
+                </div>
+              ))}
+              {hint && <p className="text-xs text-slate-600">{hint}</p>}
+            </div>
+          </div>
+        ))}
+      </ExpandableSection>
+
+      <ExpandableSection
+        title="Salesforce Connector"
+        subtitle="Sync conversations and manage contacts & prospects in Salesforce"
+        icon={Cloud}
+        color="#10b981"
+        defaultOpen
+        badge={
+          <span className={`badge ${sfConnected ? 'badge-green' : 'badge-red'}`}>
+            {sfConnected ? <Wifi size={10} /> : <WifiOff size={10} />}
+            {sfConnected ? 'Connected' : 'Not connected'}
+          </span>
+        }
+      >
+        <div className="glass-card rounded-xl overflow-hidden">
           <div
             className="px-5 py-3 flex items-center justify-between"
-            style={{ borderBottom: '1px solid rgba(0,198,255,0.08)', background: `${color}0a` }}
+            style={{ borderBottom: '1px solid rgba(0,198,255,0.08)', background: '#10b9810a' }}
           >
-            <h2 className="text-sm font-bold" style={{ color }}>{section}</h2>
-            {docsUrl && (
-              <a href={docsUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-slate-500 flex items-center gap-1 hover:text-slate-300">
-                Docs <ExternalLink size={11} />
-              </a>
-            )}
+            <h3 className="text-sm font-bold" style={{ color: '#10b981' }}>Connection Settings</h3>
+            <a href="https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/" target="_blank" rel="noopener noreferrer" className="text-xs text-slate-500 flex items-center gap-1 hover:text-slate-300">
+              Docs <ExternalLink size={11} />
+            </a>
           </div>
           <div className="p-5 space-y-4">
-            {fields.map(f => (
+            {SF_FIELDS.map(f => (
               <div key={f.key}>
                 <label className="text-xs font-medium text-slate-400 block mb-1">{f.label}</label>
-                {f.secret ? (
-                  <SecretInput field={f} value={vals[f.key] || ''} onChange={v => set(f.key, v)} />
-                ) : (
-                  <input
-                    value={vals[f.key] || ''}
-                    onChange={e => set(f.key, e.target.value)}
-                    placeholder={f.placeholder}
-                  />
-                )}
+                <FieldInput field={f} value={vals[f.key] || ''} onChange={v => set(f.key, v)} />
               </div>
             ))}
-            {hint && <p className="text-xs text-slate-600">{hint}</p>}
+            <p className="text-xs text-slate-600">
+              Paste an Instance URL + Access Token directly, sign in with Salesforce SSO below, or fill in the
+              Connect fields and use "Connect" below to fetch them via the password OAuth flow. The org's Connected App must allow this flow and CORS for this site.
+            </p>
           </div>
         </div>
-      ))}
+
+        <SalesforceConnector />
+      </ExpandableSection>
 
       <button onClick={saveAll} className="btn-primary w-full justify-center" style={{ padding: '14px' }}>
         {saved ? <CheckCircle size={16} /> : <Save size={16} />}

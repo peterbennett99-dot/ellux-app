@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  Cloud, RefreshCw, Plus, X, CheckCircle2, XCircle, User, Briefcase,
+  RefreshCw, Plus, X, CheckCircle2, XCircle, User, Briefcase,
   MessageSquare, Link2, ExternalLink, Wifi, WifiOff, LogIn, LogOut, Copy, Check,
 } from 'lucide-react';
 import { elevenLabs, salesforce } from '../lib/api';
@@ -177,7 +177,9 @@ function ConversationSyncCard({ conv, synced, syncing, onSync }) {
   );
 }
 
-export default function Salesforce() {
+// Salesforce connection (SSO/Connect), contact creation, and conversation
+// sync — embedded as the contents of the Salesforce widget on Settings.
+export default function SalesforceConnector() {
   const { showToast } = useApp();
   const [connected, setConnected] = useState(salesforce.isConnected());
   const [testing, setTesting] = useState(false);
@@ -243,7 +245,7 @@ export default function Salesforce() {
   async function handleSsoLogin() {
     const clientId = localStorage.getItem('sf_client_id') || '';
     if (!clientId) {
-      showToast('Add your Connected App Consumer Key (sf_client_id) in Settings first', 'error');
+      showToast('Add your Connected App Consumer Key (sf_client_id) below first', 'error');
       return;
     }
     setSsoLoading(true);
@@ -352,40 +354,27 @@ export default function Salesforce() {
   }
 
   return (
-    <div className="fade-in p-6 space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Cloud size={20} className="text-green-400" />
-            Salesforce
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">Sync conversations and manage contacts &amp; prospects in Salesforce</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className={`badge ${connected ? 'badge-green' : 'badge-red'}`}>
-            {connected ? <Wifi size={10} /> : <WifiOff size={10} />}
-            {connected ? 'Connected' : 'Not connected'}
-          </span>
-          {connected ? (
-            <button onClick={handleDisconnect} className="btn-ghost">
-              <LogOut size={14} />
-              Disconnect
-            </button>
-          ) : (
-            <button onClick={handleSsoLogin} disabled={ssoLoading} className="btn-primary">
-              {ssoLoading ? <RefreshCw size={14} className="animate-spin" /> : <LogIn size={14} />}
-              {ssoLoading ? 'Signing in…' : 'Sign in with Salesforce'}
-            </button>
-          )}
-          <button onClick={handleConnect} disabled={connecting} className="btn-ghost">
-            {connecting ? <RefreshCw size={14} className="animate-spin" /> : <Link2 size={14} />}
-            {connecting ? 'Connecting…' : 'Connect'}
+    <div className="space-y-5">
+      <div className="flex items-center gap-2 flex-wrap">
+        {connected ? (
+          <button onClick={handleDisconnect} className="btn-ghost">
+            <LogOut size={14} />
+            Disconnect
           </button>
-          <button onClick={handleTest} disabled={testing} className="btn-ghost">
-            {testing ? <RefreshCw size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-            Test Connection
+        ) : (
+          <button onClick={handleSsoLogin} disabled={ssoLoading} className="btn-primary">
+            {ssoLoading ? <RefreshCw size={14} className="animate-spin" /> : <LogIn size={14} />}
+            {ssoLoading ? 'Signing in…' : 'Sign in with Salesforce'}
           </button>
-        </div>
+        )}
+        <button onClick={handleConnect} disabled={connecting} className="btn-ghost">
+          {connecting ? <RefreshCw size={14} className="animate-spin" /> : <Link2 size={14} />}
+          {connecting ? 'Connecting…' : 'Connect'}
+        </button>
+        <button onClick={handleTest} disabled={testing} className="btn-ghost">
+          {testing ? <RefreshCw size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+          Test Connection
+        </button>
       </div>
 
       {!connected && (
@@ -394,8 +383,8 @@ export default function Salesforce() {
           <div className="text-xs text-slate-400 space-y-2">
             <p>
               <strong className="text-slate-300">Sign in with Salesforce</strong> uses SSO (OAuth Authorization Code + PKCE) —
-              add your Connected App's Consumer Key as <code>sf_client_id</code> (and Login URL, if not production) in{' '}
-              <strong className="text-slate-300">Settings</strong>, then register this app's callback URL on the Connected App:
+              add your Connected App's Consumer Key as <code>sf_client_id</code> (and Login URL, if not production) below,
+              then register this app's callback URL on the Connected App:
             </p>
             <div className="flex items-center gap-2">
               <code className="px-2 py-1 rounded-lg break-all" style={{ background: 'rgba(0,0,0,0.4)' }}>{getRedirectUri()}</code>
@@ -404,7 +393,7 @@ export default function Salesforce() {
               </button>
             </div>
             <p>
-              Alternatively, paste a Salesforce Instance URL and Access Token directly in Settings, or fill in the
+              Alternatively, paste a Salesforce Instance URL and Access Token directly below, or fill in the
               username/password Connect fields and click "Connect" above.{' '}
               <a href="https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/" target="_blank" rel="noopener noreferrer" className="underline inline-flex items-center gap-1">
                 Docs <ExternalLink size={10} />
@@ -415,10 +404,10 @@ export default function Salesforce() {
       )}
 
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-400 flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-slate-400 flex items-center gap-2">
           <User size={14} />
           CONTACTS &amp; PROSPECTS
-        </h2>
+        </h3>
         <button onClick={() => setShowCreate(v => !v)} className={showCreate ? 'btn-primary' : 'btn-ghost'}>
           <Plus size={14} />
           New Contact / Prospect
@@ -428,10 +417,10 @@ export default function Salesforce() {
       <CreateContactPanel open={showCreate} onClose={() => setShowCreate(false)} />
 
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-400 flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-slate-400 flex items-center gap-2">
           <MessageSquare size={14} />
           CONVERSATION SYNC
-        </h2>
+        </h3>
         <button onClick={loadConversations} disabled={loading} className="btn-ghost">
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           Refresh
@@ -446,7 +435,7 @@ export default function Salesforce() {
       ) : conversations.length === 0 ? (
         <div className="text-center py-12 text-slate-500">
           <XCircle size={32} className="mx-auto mb-3 opacity-30" />
-          No conversations found. Check your API key in Settings.
+          No conversations found. Check your API key above.
         </div>
       ) : (
         <div className="space-y-2">
