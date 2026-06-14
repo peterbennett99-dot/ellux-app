@@ -253,7 +253,6 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          <p className="text-sm text-slate-500 mt-1">Ellux unified control panel</p>
         </div>
         <button onClick={loadConversations} disabled={loading} className="btn-ghost">
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
