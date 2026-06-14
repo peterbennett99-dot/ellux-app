@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Mic, Search, Save, RefreshCw, ChevronDown, ChevronUp, Play, Pause, Sparkles } from 'lucide-react';
+import { Mic, Search, Save, RefreshCw, ChevronDown, ChevronUp, Play, Pause, Sparkles, Plus, Upload, X } from 'lucide-react';
 import { elevenLabs } from '../lib/api';
 import { useApp } from '../lib/store';
 
@@ -104,11 +104,123 @@ function VoiceCard({ voice, onSave }) {
   );
 }
 
+function CreateVoicePanel({ open, onClose, onCreated }) {
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [files, setFiles] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const { showToast } = useApp();
+
+  function handleFiles(e) {
+    setFiles(Array.from(e.target.files || []));
+  }
+
+  function removeFile(i) {
+    setFiles(f => f.filter((_, idx) => idx !== i));
+  }
+
+  async function handleSubmit() {
+    if (!name.trim()) { showToast('Enter a name for the voice', 'error'); return; }
+    if (files.length === 0) { showToast('Add at least one audio sample', 'error'); return; }
+    setSaving(true);
+    try {
+      const voice = await elevenLabs.addVoice(name.trim(), files, description.trim());
+      showToast(`Voice "${name.trim()}" created`, 'success');
+      setName(''); setDescription(''); setFiles([]);
+      onCreated?.(voice);
+      onClose?.();
+    } catch (e) {
+      showToast(e.message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="glass-card rounded-xl p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Plus size={16} className="text-cyan-400" />
+          <p className="text-sm font-semibold text-white">Create Voice</p>
+        </div>
+        <button onClick={onClose} className="btn-ghost" style={{ padding: '6px' }}>
+          <X size={14} />
+        </button>
+      </div>
+      <p className="text-xs text-slate-500">
+        Clone a new voice from one or more clear audio samples (at least 30 seconds total recommended).
+      </p>
+
+      <div>
+        <label className="text-xs font-medium text-slate-400 block mb-1">Name</label>
+        <input value={name} onChange={e => setName(e.target.value)} placeholder="My Custom Voice" />
+      </div>
+
+      <div>
+        <label className="text-xs font-medium text-slate-400 block mb-1">Description (optional)</label>
+        <textarea
+          rows={2}
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+          placeholder="A brief description of this voice…"
+          style={{ resize: 'vertical', minHeight: '56px' }}
+        />
+      </div>
+
+      <div>
+        <label className="text-xs font-medium text-slate-400 block mb-1">Audio Samples</label>
+        <div className="upload-zone rounded-lg p-4 text-center">
+          <input
+            type="file"
+            id="voice-files-input"
+            className="hidden"
+            accept="audio/*"
+            multiple
+            onChange={handleFiles}
+            style={{ display: 'none' }}
+          />
+          <label htmlFor="voice-files-input" className="cursor-pointer">
+            <Upload size={20} className="mx-auto mb-2 text-cyan-400" />
+            <p className="text-sm text-slate-300">
+              {files.length > 0 ? `${files.length} file${files.length > 1 ? 's' : ''} selected` : 'Click to choose audio files'}
+            </p>
+          </label>
+        </div>
+        {files.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {files.map((f, i) => (
+              <span key={i} className="badge badge-blue">
+                {f.name}
+                <button onClick={() => removeFile(i)} style={{ marginLeft: '4px', display: 'inline-flex' }}>
+                  <X size={10} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <button onClick={handleSubmit} disabled={saving} className="btn-primary w-full justify-center">
+        <Plus size={14} />
+        {saving ? 'Creating…' : 'Create Voice'}
+      </button>
+    </div>
+  );
+}
+
 export default function XiVoices() {
   const [voices, setVoices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
   const { showToast } = useApp();
+
+  function handleCreated(voice) {
+    if (voice?.voice_id) setVoices(list => [voice, ...list]);
+    else load();
+  }
 
   async function load() {
     setLoading(true);
@@ -135,11 +247,19 @@ export default function XiVoices() {
           <h1 className="text-2xl font-bold text-white">Voices</h1>
           <p className="text-sm text-slate-500 mt-1">Manage voice settings</p>
         </div>
-        <button onClick={load} disabled={loading} className="btn-ghost">
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowCreate(v => !v)} className={showCreate ? 'btn-primary' : 'btn-ghost'}>
+            <Plus size={14} />
+            Create Voice
+          </button>
+          <button onClick={load} disabled={loading} className="btn-ghost">
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+        </div>
       </div>
+
+      <CreateVoicePanel open={showCreate} onClose={() => setShowCreate(false)} onCreated={handleCreated} />
 
       <div className="relative">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />

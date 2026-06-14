@@ -69,6 +69,14 @@ export const elevenLabs = {
   getVoices: () => xiGet('/voices'),
   getVoice: (id) => xiGet(`/voices/${id}`),
   editVoiceSettings: (id, settings) => xiPost(`/voices/${id}/settings/edit`, settings),
+  // Instant Voice Cloning — creates a new voice from one or more audio samples.
+  addVoice: (name, files, description) => {
+    const fd = new FormData();
+    fd.append('name', name);
+    if (description) fd.append('description', description);
+    for (const file of files) fd.append('files', file);
+    return xiPostForm('/voices/add', fd);
+  },
   getAgents: () => xiGet('/convai/agents'),
   getAgent: (id) => xiGet(`/convai/agents/${id}`),
   createAgent: (body) => xiPost('/convai/agents/create', body),
