@@ -142,6 +142,10 @@ export default function PreviewDemo() {
       session.on(AgentEventsEnum.AVATAR_TRANSCRIPTION, e => {
         setTranscript(t => [...t.slice(-8), { speaker: 'Avatar', text: e.text }]);
       });
+      // Barge-in: as soon as the user starts speaking, interrupt the avatar's current response.
+      session.on(AgentEventsEnum.USER_SPEAK_STARTED, () => {
+        safeInterrupt(session);
+      });
 
       await session.start();
       showToast('Live session started', 'success');
@@ -174,8 +178,16 @@ export default function PreviewDemo() {
     else { session.startListening(); setListening(true); }
   }
 
+  function safeInterrupt(session) {
+    try {
+      (session ?? sessionRef.current)?.interrupt();
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  }
+
   function interrupt() {
-    sessionRef.current?.interrupt();
+    safeInterrupt();
   }
 
   return (
