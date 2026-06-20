@@ -121,7 +121,7 @@ function ConvCard({ conv }) {
                   {msg.role === 'user' ? <User size={10} className="text-cyan-400" /> : <BarChart2 size={10} className="text-purple-400" />}
                 </div>
                 <div
-                  className="max-w-[80%] px-3 py-2 rounded-xl text-xs text-slate-300"
+                  className={`max-w-[80%] px-3 py-2 rounded-xl text-xs text-slate-300 ${msg.role === 'user' ? 'msg-bubble-user' : 'msg-bubble-agent'}`}
                   style={{
                     background: msg.role === 'user' ? 'rgba(0,198,255,0.08)' : 'rgba(124,58,237,0.08)',
                     border: `1px solid ${msg.role === 'user' ? 'rgba(0,198,255,0.15)' : 'rgba(124,58,237,0.15)'}`,
@@ -361,8 +361,8 @@ export default function Dashboard() {
                 <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} width={24} />
                 <Tooltip
-                  contentStyle={{ background: '#0d1220', border: '1px solid rgba(0,198,255,0.2)', borderRadius: 8 }}
-                  labelStyle={{ color: '#94a3b8' }}
+                  contentStyle={{ background: 'var(--surface-tooltip)', border: '1px solid rgba(0,198,255,0.2)', borderRadius: 8 }}
+                  labelStyle={{ color: 'var(--text-muted)' }}
                   itemStyle={{ color: '#00c6ff' }}
                 />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
@@ -408,7 +408,7 @@ export default function Dashboard() {
 
       {/* Conversation tabs */}
       <div ref={convListRef}>
-        <div className="flex gap-1 p-1 rounded-xl mb-4" style={{ background: 'rgba(0,0,0,0.3)' }}>
+        <div className="tab-bar flex gap-1 p-1 rounded-xl mb-4">
           {[
             { id: 'all', label: 'All', count: filteredConversations.length },
             { id: 'passed', label: 'Passed', count: passed.length },

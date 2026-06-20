@@ -30,12 +30,9 @@ function Layout() {
   const Page = PAGES[activePage] || Dashboard;
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: '#080b14' }}>
+    <div className="app-shell flex h-screen overflow-hidden">
       <Sidebar />
-      <main
-        className="flex-1 overflow-y-auto main-content"
-        style={{ background: 'radial-gradient(ellipse at 20% 0%, rgba(0,198,255,0.04) 0%, transparent 60%), #080b14' }}
-      >
+      <main className="main-bg flex-1 overflow-y-auto main-content">
         <Page />
       </main>
       <MobileNav />

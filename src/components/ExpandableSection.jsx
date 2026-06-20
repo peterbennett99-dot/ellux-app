@@ -18,7 +18,7 @@ export default function ExpandableSection({ title, subtitle, icon: Icon, color =
             </div>
           )}
           <div>
-            <h2 className="text-sm font-bold text-white">{title}</h2>
+            <h2 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{title}</h2>
             {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
           </div>
         </div>
