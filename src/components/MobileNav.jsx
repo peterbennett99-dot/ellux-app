@@ -1,4 +1,4 @@
-import { LayoutDashboard, Mic, Bot, Video, Workflow, BarChart2, Settings, Sparkles, BookOpen, Code2 } from 'lucide-react';
+import { LayoutDashboard, Mic, Bot, Video, Workflow, Settings, Sparkles, BookOpen, Code2, Sun, Moon } from 'lucide-react';
 import { useApp } from '../lib/store';
 
 const NAV = [
@@ -14,7 +14,7 @@ const NAV = [
 ];
 
 export default function MobileNav() {
-  const { activePage, setActivePage } = useApp();
+  const { activePage, setActivePage, theme, toggleTheme } = useApp();
 
   return (
     <nav
@@ -22,6 +22,17 @@ export default function MobileNav() {
       style={{ borderTop: '1px solid rgba(0,198,255,0.12)', paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="flex items-center justify-around px-1 py-2">
+        <button
+          onClick={toggleTheme}
+          className="flex flex-col items-center gap-1 px-1 py-1 rounded-lg"
+        >
+          {theme === 'dark'
+            ? <Sun size={18} className="text-slate-500" />
+            : <Moon size={18} className="text-slate-500" />}
+          <span className="text-[9px] font-medium text-slate-500">
+            {theme === 'dark' ? 'Light' : 'Dark'}
+          </span>
+        </button>
         {NAV.map(({ id, label, icon: Icon }) => {
           const active = activePage === id;
           return (

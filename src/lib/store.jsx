@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 const AppContext = createContext(null);
 
@@ -24,6 +24,16 @@ function initialPage() {
 export function AppProvider({ children }) {
   const [toast, setToast] = useState(null);
   const [activePage, setActivePage] = useState(initialPage);
+  const [theme, setThemeState] = useState(() => localStorage.getItem('ellux_theme') || 'dark');
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('light', theme === 'light');
+    localStorage.setItem('ellux_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setThemeState(t => t === 'dark' ? 'light' : 'dark');
+  }, []);
 
   const [selectedVoice, setSelectedVoiceState] = useState(() => loadSelection(SEL_KEYS.voice));
   const [selectedAgent, setSelectedAgentState] = useState(() => loadSelection(SEL_KEYS.agent));
@@ -65,6 +75,7 @@ export function AppProvider({ children }) {
   return (
     <AppContext.Provider value={{
       toast, showToast, activePage, setActivePage,
+      theme, toggleTheme,
       selectedVoice, setSelectedVoice,
       selectedAgent, setSelectedAgent,
       selectedAvatar, setSelectedAvatar,

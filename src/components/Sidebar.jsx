@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import {
   LayoutDashboard, Mic, Bot, Video, Workflow,
-  Settings, ChevronRight, Zap, Sparkles, BookOpen, Code2
+  Settings, ChevronRight, Zap, Sparkles, BookOpen, Code2, Sun, Moon,
 } from 'lucide-react';
 import { useApp } from '../lib/store';
 
@@ -21,7 +21,7 @@ const NAV = [
 ];
 
 export default function Sidebar() {
-  const { activePage, setActivePage } = useApp();
+  const { activePage, setActivePage, theme, toggleTheme } = useApp();
   const [expanded, setExpanded] = useState(false);
   const collapsed = !expanded;
   const collapseTimer = useRef(null);
@@ -85,11 +85,17 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      {!collapsed && (
-        <div className="px-4 py-4" style={{ borderTop: '1px solid rgba(0,198,255,0.08)' }}>
-          <p className="text-xs text-slate-600">Ellux Platform v1.0</p>
-        </div>
-      )}
+      <div className={`py-4 flex items-center ${collapsed ? 'justify-center px-0' : 'px-4 justify-between'}`} style={{ borderTop: '1px solid rgba(0,198,255,0.08)' }}>
+        {!collapsed && <p className="text-xs text-slate-600">Ellux Platform v1.0</p>}
+        <button
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          className="btn-ghost"
+          style={{ padding: '6px 8px', minWidth: 0 }}
+        >
+          {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+        </button>
+      </div>
     </aside>
   );
 }
