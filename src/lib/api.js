@@ -11,7 +11,7 @@ async function xiGet(path) {
   const r = await fetch(`${XI_BASE}${path}`, {
     headers: { 'xi-api-key': XI(), 'Content-Type': 'application/json' },
   });
-  if (!r.ok) throw new Error(`ElevenLabs ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`Agents ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
@@ -21,7 +21,7 @@ async function xiPost(path, body) {
     headers: { 'xi-api-key': XI(), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`ElevenLabs ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`Agents ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
@@ -31,17 +31,59 @@ async function xiPatch(path, body) {
     headers: { 'xi-api-key': XI(), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`ElevenLabs ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`Agents ${r.status}: ${await r.text()}`);
   return r.json();
+}
+
+async function xiPostForm(path, formData) {
+  const r = await fetch(`${XI_BASE}${path}`, {
+    method: 'POST',
+    headers: { 'xi-api-key': XI() },
+    body: formData,
+  });
+  if (!r.ok) throw new Error(`Agents ${r.status}: ${await r.text()}`);
+  return r.json();
+}
+
+async function xiDelete(path) {
+  const r = await fetch(`${XI_BASE}${path}`, {
+    method: 'DELETE',
+    headers: { 'xi-api-key': XI(), 'Content-Type': 'application/json' },
+  });
+  if (!r.ok) throw new Error(`Agents ${r.status}: ${await r.text()}`);
+  return r.status === 204 ? null : r.json();
+}
+
+// GET /convai/agents/{id} returns both the legacy `tools` array and the new
+// `tool_ids` under conversation_config.agent.prompt. PATCHing that payload back
+// as-is fails with "Cannot specify both tools and tool IDs" — strip the legacy
+// field before sending an agent update.
+function stripLegacyTools(conversationConfig) {
+  const prompt = conversationConfig?.agent?.prompt;
+  if (!prompt || !('tools' in prompt)) return conversationConfig;
+  const { tools, ...rest } = prompt;
+  return { ...conversationConfig, agent: { ...conversationConfig.agent, prompt: rest } };
 }
 
 export const elevenLabs = {
   getVoices: () => xiGet('/voices'),
   getVoice: (id) => xiGet(`/voices/${id}`),
   editVoiceSettings: (id, settings) => xiPost(`/voices/${id}/settings/edit`, settings),
+  // Instant Voice Cloning — creates a new voice from one or more audio samples.
+  addVoice: (name, files, description) => {
+    const fd = new FormData();
+    fd.append('name', name);
+    if (description) fd.append('description', description);
+    for (const file of files) fd.append('files', file);
+    return xiPostForm('/voices/add', fd);
+  },
   getAgents: () => xiGet('/convai/agents'),
   getAgent: (id) => xiGet(`/convai/agents/${id}`),
-  updateAgent: (id, body) => xiPatch(`/convai/agents/${id}`, body),
+  createAgent: (body) => xiPost('/convai/agents/create', body),
+  updateAgent: (id, body) => xiPatch(`/convai/agents/${id}`, {
+    ...body,
+    conversation_config: body.conversation_config && stripLegacyTools(body.conversation_config),
+  }),
   getConversations: (agentId) =>
     xiGet(`/convai/conversations${agentId ? `?agent_id=${agentId}` : ''}`),
   getConversation: (id) => xiGet(`/convai/conversations/${id}`),
@@ -51,10 +93,25 @@ export const elevenLabs = {
     const r = await fetch(`${XI_BASE}/convai/conversations/${id}/audio`, {
       headers: { 'xi-api-key': XI() },
     });
-    if (!r.ok) throw new Error(`ElevenLabs ${r.status}: ${await r.text()}`);
+    if (!r.ok) throw new Error(`Agents ${r.status}: ${await r.text()}`);
     const blob = await r.blob();
     return URL.createObjectURL(blob);
   },
+  // ── Knowledge Base ────────────────────────────────────────────────────────
+  getKnowledgeBaseList: (params = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return xiGet(`/convai/knowledge-base${qs ? `?${qs}` : ''}`);
+  },
+  getKnowledgeBaseDocument: (id) => xiGet(`/convai/knowledge-base/${id}`),
+  createKnowledgeBaseFromText: (text, name) => xiPost('/convai/knowledge-base/text', { text, name: name || undefined }),
+  createKnowledgeBaseFromUrl: (url, name) => xiPost('/convai/knowledge-base/url', { url, name: name || undefined }),
+  createKnowledgeBaseFromFile: (file, name) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    if (name) fd.append('name', name);
+    return xiPostForm('/convai/knowledge-base/file', fd);
+  },
+  deleteKnowledgeBaseDocument: (id) => xiDelete(`/convai/knowledge-base/${id}`),
 };
 
 // ── LiveAvatar ──────────────────────────────────────────────────────────────
@@ -65,7 +122,7 @@ async function laGet(path) {
   const r = await fetch(`${LA_BASE}${path}`, {
     headers: { 'X-API-KEY': LA(), 'Content-Type': 'application/json' },
   });
-  if (!r.ok) throw new Error(`LiveAvatar ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`Avatars ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
@@ -75,7 +132,7 @@ async function laPost(path, body) {
     headers: { 'X-API-KEY': LA(), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`LiveAvatar ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`Avatars ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
@@ -85,7 +142,7 @@ async function laPatch(path, body) {
     headers: { 'X-API-KEY': LA(), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`LiveAvatar ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`Avatars ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
@@ -94,7 +151,7 @@ async function laDelete(path) {
     method: 'DELETE',
     headers: { 'X-API-KEY': LA(), 'Content-Type': 'application/json' },
   });
-  if (!r.ok) throw new Error(`LiveAvatar ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`Avatars ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
@@ -122,7 +179,7 @@ async function n8nGet(path) {
   const r = await fetch(`${N8N_URL()}${path}`, {
     headers: { 'X-N8N-API-KEY': N8N_KEY(), 'Content-Type': 'application/json' },
   });
-  if (!r.ok) throw new Error(`N8N ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`Workflows ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
@@ -132,7 +189,7 @@ async function n8nPost(path, body) {
     headers: { 'X-N8N-API-KEY': N8N_KEY(), 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (!r.ok) throw new Error(`N8N ${r.status}: ${await r.text()}`);
+  if (!r.ok) throw new Error(`Workflows ${r.status}: ${await r.text()}`);
   return r.json();
 }
 
@@ -161,4 +218,265 @@ export const n8n = {
   // side effect distinct from a one-off execution.
   activateWorkflow: (id) => n8nPost(`/api/v1/workflows/${id}/activate`, {}),
   deactivateWorkflow: (id) => n8nPost(`/api/v1/workflows/${id}/deactivate`, {}),
+};
+
+// ── Salesforce ──────────────────────────────────────────────────────────────
+const SF_INSTANCE = () => getKey('sf_instance_url').replace(/\/+$/, '');
+const SF_TOKEN = () => getKey('sf_access_token');
+const SF_VERSION = () => getKey('sf_api_version') || 'v59.0';
+const SF_LOGIN_URL = () => (getKey('sf_login_url') || 'https://login.salesforce.com').replace(/\/+$/, '');
+
+async function sfFetch(path, opts = {}) {
+  if (!SF_INSTANCE() || !SF_TOKEN()) throw new Error('Salesforce is not connected — add your Instance URL and Access Token in Settings.');
+  const r = await fetch(`${SF_INSTANCE()}${path}`, {
+    ...opts,
+    headers: { Authorization: `Bearer ${SF_TOKEN()}`, 'Content-Type': 'application/json', ...opts.headers },
+  });
+  if (!r.ok) throw new Error(`Salesforce ${r.status}: ${await r.text()}`);
+  return r.status === 204 ? null : r.json();
+}
+
+// Escapes single quotes for use inside a SOQL string literal.
+function soqlEscape(value) {
+  return String(value).replace(/'/g, "\\'");
+}
+
+// ── PKCE helpers for the OAuth 2.0 Authorization Code (SSO) flow ────────────
+function base64UrlEncode(buffer) {
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function randomString(len = 64) {
+  const arr = new Uint8Array(len);
+  crypto.getRandomValues(arr);
+  return base64UrlEncode(arr);
+}
+
+async function sha256Base64Url(input) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+  return base64UrlEncode(digest);
+}
+
+const SF_PKCE_VERIFIER_KEY = 'sf_pkce_verifier';
+const SF_OAUTH_STATE_KEY = 'sf_oauth_state';
+
+export const salesforce = {
+  isConnected: () => !!(SF_INSTANCE() && SF_TOKEN()),
+
+  // Resource-Owner Password Credentials flow: exchanges Connected App
+  // credentials + username/password(+security token) for an access token.
+  // Requires the org's Connected App to allow this flow and CORS for this origin.
+  authenticate: async ({ clientId, clientSecret, username, password }) => {
+    const params = new URLSearchParams({
+      grant_type: 'password',
+      client_id: clientId,
+      client_secret: clientSecret,
+      username,
+      password,
+    });
+    const r = await fetch(`${SF_LOGIN_URL()}/services/oauth2/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params,
+    });
+    if (!r.ok) throw new Error(`Salesforce auth ${r.status}: ${await r.text()}`);
+    const data = await r.json();
+    localStorage.setItem('sf_access_token', data.access_token);
+    localStorage.setItem('sf_instance_url', data.instance_url);
+    return data;
+  },
+
+  // SSO (OAuth 2.0 Authorization Code + PKCE): builds the Salesforce login/
+  // consent URL to redirect the browser to. No client secret required —
+  // the Connected App must have "Require Proof Key for Code Exchange (PKCE)"
+  // enabled and this app's URL listed as a Callback URL.
+  getAuthorizeUrl: async ({ clientId, loginUrl, redirectUri }) => {
+    const verifier = randomString();
+    const state = randomString(16);
+    sessionStorage.setItem(SF_PKCE_VERIFIER_KEY, verifier);
+    sessionStorage.setItem(SF_OAUTH_STATE_KEY, state);
+    const challenge = await sha256Base64Url(verifier);
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      code_challenge: challenge,
+      code_challenge_method: 'S256',
+      scope: 'api refresh_token',
+      state,
+    });
+    return `${(loginUrl || 'https://login.salesforce.com').replace(/\/+$/, '')}/services/oauth2/authorize?${params.toString()}`;
+  },
+
+  // Completes the SSO flow: exchanges the authorization code (from the
+  // redirect back to this app) for an access token + instance URL.
+  exchangeCodeForToken: async ({ code, state, clientId, loginUrl, redirectUri }) => {
+    const expectedState = sessionStorage.getItem(SF_OAUTH_STATE_KEY);
+    if (expectedState && state && expectedState !== state) {
+      throw new Error('Salesforce SSO failed: state mismatch (possible CSRF). Please try connecting again.');
+    }
+    const verifier = sessionStorage.getItem(SF_PKCE_VERIFIER_KEY) || '';
+    const params = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      code_verifier: verifier,
+    });
+    const r = await fetch(`${(loginUrl || 'https://login.salesforce.com').replace(/\/+$/, '')}/services/oauth2/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params,
+    });
+    sessionStorage.removeItem(SF_PKCE_VERIFIER_KEY);
+    sessionStorage.removeItem(SF_OAUTH_STATE_KEY);
+    if (!r.ok) throw new Error(`Salesforce SSO ${r.status}: ${await r.text()}`);
+    const data = await r.json();
+    localStorage.setItem('sf_access_token', data.access_token);
+    localStorage.setItem('sf_instance_url', data.instance_url);
+    if (data.refresh_token) localStorage.setItem('sf_refresh_token', data.refresh_token);
+    return data;
+  },
+
+  // Refreshes the access token using a previously-issued refresh token.
+  refreshAccessToken: async ({ clientId, loginUrl }) => {
+    const refreshToken = getKey('sf_refresh_token');
+    if (!refreshToken) throw new Error('No Salesforce refresh token available — reconnect via SSO.');
+    const params = new URLSearchParams({
+      grant_type: 'refresh_token',
+      client_id: clientId,
+      refresh_token: refreshToken,
+    });
+    const r = await fetch(`${(loginUrl || 'https://login.salesforce.com').replace(/\/+$/, '')}/services/oauth2/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params,
+    });
+    if (!r.ok) throw new Error(`Salesforce token refresh ${r.status}: ${await r.text()}`);
+    const data = await r.json();
+    localStorage.setItem('sf_access_token', data.access_token);
+    if (data.instance_url) localStorage.setItem('sf_instance_url', data.instance_url);
+    return data;
+  },
+
+  disconnect: () => {
+    ['sf_access_token', 'sf_instance_url', 'sf_refresh_token'].forEach(k => localStorage.removeItem(k));
+  },
+
+  // Simple connectivity check — fetches org limits, which any authenticated user can read.
+  testConnection: () => sfFetch(`/services/data/${SF_VERSION()}/limits`),
+
+  query: (soql) => sfFetch(`/services/data/${SF_VERSION()}/query?q=${encodeURIComponent(soql)}`),
+
+  createRecord: (sobject, fields) => sfFetch(`/services/data/${SF_VERSION()}/sobjects/${sobject}`, {
+    method: 'POST',
+    body: JSON.stringify(fields),
+  }),
+
+  updateRecord: (sobject, id, fields) => sfFetch(`/services/data/${SF_VERSION()}/sobjects/${sobject}/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(fields),
+  }),
+
+  findContactByEmail: async (email) => {
+    const res = await salesforce.query(`SELECT Id, FirstName, LastName, Email, Phone FROM Contact WHERE Email = '${soqlEscape(email)}' LIMIT 1`);
+    return res.records?.[0] || null;
+  },
+
+  findContactByPhone: async (phone) => {
+    const res = await salesforce.query(`SELECT Id, FirstName, LastName, Email, Phone FROM Contact WHERE Phone = '${soqlEscape(phone)}' LIMIT 1`);
+    return res.records?.[0] || null;
+  },
+
+  findLeadByEmail: async (email) => {
+    const res = await salesforce.query(`SELECT Id, FirstName, LastName, Email, Phone, Company FROM Lead WHERE Email = '${soqlEscape(email)}' AND IsConverted = false LIMIT 1`);
+    return res.records?.[0] || null;
+  },
+
+  findLeadByPhone: async (phone) => {
+    const res = await salesforce.query(`SELECT Id, FirstName, LastName, Email, Phone, Company FROM Lead WHERE Phone = '${soqlEscape(phone)}' AND IsConverted = false LIMIT 1`);
+    return res.records?.[0] || null;
+  },
+
+  // Contacts represent known people (typically linked to an Account in Salesforce).
+  createContact: (fields) => salesforce.createRecord('Contact', fields),
+
+  // Leads represent prospects not yet qualified into Accounts/Contacts.
+  createLead: (fields) => salesforce.createRecord('Lead', fields),
+
+  createTask: (fields) => salesforce.createRecord('Task', fields),
+};
+
+// ── HubSpot ─────────────────────────────────────────────────────────────────
+const HS_TOKEN = () => getKey('hs_access_token');
+const HS_BASE = 'https://api.hubapi.com';
+
+async function hsFetch(path, opts = {}) {
+  if (!HS_TOKEN()) throw new Error('HubSpot is not connected — add your Private App Access Token in Settings.');
+  const r = await fetch(`${HS_BASE}${path}`, {
+    ...opts,
+    headers: { Authorization: `Bearer ${HS_TOKEN()}`, 'Content-Type': 'application/json', ...opts.headers },
+  });
+  if (!r.ok) throw new Error(`HubSpot ${r.status}: ${await r.text()}`);
+  return r.status === 204 ? null : r.json();
+}
+
+// Association type ID for "note to contact" (HubSpot-defined default).
+const HS_NOTE_TO_CONTACT = 202;
+
+export const hubspot = {
+  isConnected: () => !!HS_TOKEN(),
+
+  disconnect: () => localStorage.removeItem('hs_access_token'),
+
+  // Simple connectivity check — lists a single contact.
+  testConnection: () => hsFetch('/crm/v3/objects/contacts?limit=1'),
+
+  searchContacts: (filters, properties) => hsFetch('/crm/v3/objects/contacts/search', {
+    method: 'POST',
+    body: JSON.stringify({ filterGroups: [{ filters }], properties, limit: 1 }),
+  }),
+
+  findContactByEmail: async (email) => {
+    const res = await hubspot.searchContacts(
+      [{ propertyName: 'email', operator: 'EQ', value: email }],
+      ['email', 'firstname', 'lastname', 'phone']
+    );
+    return res.results?.[0] || null;
+  },
+
+  findContactByPhone: async (phone) => {
+    const res = await hubspot.searchContacts(
+      [{ propertyName: 'phone', operator: 'EQ', value: phone }],
+      ['email', 'firstname', 'lastname', 'phone']
+    );
+    return res.results?.[0] || null;
+  },
+
+  createContact: (properties) => hsFetch('/crm/v3/objects/contacts', {
+    method: 'POST',
+    body: JSON.stringify({ properties }),
+  }),
+
+  updateContact: (id, properties) => hsFetch(`/crm/v3/objects/contacts/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ properties }),
+  }),
+
+  // Creates a Note engagement and associates it with a contact, so a synced
+  // conversation shows up on the contact's timeline.
+  createNoteForContact: (contactId, body) => hsFetch('/crm/v3/objects/notes', {
+    method: 'POST',
+    body: JSON.stringify({
+      properties: {
+        hs_note_body: body,
+        hs_timestamp: Date.now(),
+      },
+      associations: [{
+        to: { id: contactId },
+        types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: HS_NOTE_TO_CONTACT }],
+      }],
+    }),
+  }),
 };

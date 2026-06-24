@@ -167,13 +167,13 @@ export default function N8nWorkflows() {
 
   const tabs = [
     { id: 'webhooks', label: 'Webhooks' },
-    { id: 'api', label: 'N8N API Workflows' },
+    { id: 'api', label: 'API Workflows' },
   ];
 
   return (
     <div className="fade-in p-6 space-y-5">
       <div>
-        <h1 className="text-2xl font-bold text-white">N8N Workflows</h1>
+        <h1 className="text-2xl font-bold text-white">Workflows</h1>
         <p className="text-sm text-slate-500 mt-1">Trigger automations and manage workflows</p>
       </div>
 
@@ -204,7 +204,7 @@ export default function N8nWorkflows() {
             <div className="glass-card rounded-xl p-4 space-y-3 fade-in">
               <p className="text-sm font-semibold text-white">New Webhook Trigger</p>
               <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Workflow name…" />
-              <input value={newUrl} onChange={e => setNewUrl(e.target.value)} placeholder="https://your-n8n.com/webhook/…" />
+              <input value={newUrl} onChange={e => setNewUrl(e.target.value)} placeholder="https://your-workflow-host.com/webhook/…" />
               <div className="flex gap-2">
                 <button onClick={addWebhook} className="btn-primary flex-1 justify-center">Save</button>
                 <button onClick={() => setShowAdd(false)} className="btn-ghost">Cancel</button>
@@ -228,7 +228,7 @@ export default function N8nWorkflows() {
       {tab === 'api' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-500">Connected via N8N API — toggle live activation status</p>
+            <p className="text-xs text-slate-500">Connected via Workflow API — toggle live activation status</p>
             <button onClick={loadWorkflows} disabled={loading} className="btn-ghost">
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
               Refresh
@@ -237,7 +237,7 @@ export default function N8nWorkflows() {
 
           <div className="glass rounded-xl p-3" style={{ borderColor: 'rgba(245,158,11,0.2)', background: 'rgba(245,158,11,0.05)' }}>
             <p className="text-xs text-slate-400">
-              The n8n API doesn't support running a workflow on demand — Activate/Deactivate toggles the workflow's live triggers (webhooks/schedules). To trigger a one-off run, use the <strong>Webhooks</strong> tab instead.
+              The workflow API doesn't support running a workflow on demand — Activate/Deactivate toggles the workflow's live triggers (webhooks/schedules). To trigger a one-off run, use the <strong>Webhooks</strong> tab instead.
             </p>
           </div>
 
@@ -249,7 +249,7 @@ export default function N8nWorkflows() {
           ) : workflows.length === 0 ? (
             <div className="text-center py-12 text-slate-500">
               <Workflow size={32} className="mx-auto mb-3 opacity-30" />
-              No workflows found. Check your N8N URL and API key in Settings.
+              No workflows found. Check your Workflow URL and API key in Settings.
             </div>
           ) : (
             <div className="space-y-3">

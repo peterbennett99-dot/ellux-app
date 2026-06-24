@@ -27,17 +27,17 @@ const STATE_COLORS = {
 };
 
 export default function PreviewDemo() {
-  const { showToast } = useApp();
+  const { showToast, selectedAgent, selectedAvatar, selectedVoice } = useApp();
   const videoRef = useRef(null);
   const sessionRef = useRef(null);
 
   const [agents, setAgents] = useState([]);
   const [webhooks, setWebhooks] = useState(loadWebhooks());
   const [secretId, setSecretId] = useState(localStorage.getItem(LS_SECRET_ID) || '');
-  const [agentId, setAgentId] = useState(localStorage.getItem(LS_AGENT_ID) || '');
-  const [avatarId, setAvatarId] = useState(localStorage.getItem(LS_AVATAR_ID) || SANDBOX_AVATAR_ID);
+  const [agentId, setAgentId] = useState(selectedAgent?.id || localStorage.getItem(LS_AGENT_ID) || '');
+  const [avatarId, setAvatarId] = useState(selectedAvatar?.id || localStorage.getItem(LS_AVATAR_ID) || SANDBOX_AVATAR_ID);
   const [webhookId, setWebhookId] = useState(localStorage.getItem(LS_WEBHOOK_ID) || '');
-  const [sandbox, setSandbox] = useState(true);
+  const [sandbox, setSandbox] = useState(!selectedAvatar?.id);
   const [registering, setRegistering] = useState(false);
   const [starting, setStarting] = useState(false);
   const [state, setState] = useState(SessionState.INACTIVE);
@@ -50,6 +50,15 @@ export default function PreviewDemo() {
     return () => { sessionRef.current?.stop(); };
   }, []);
 
+  // Keep the demo in sync with whatever is marked "Selected for Demo" elsewhere in Ellux.
+  useEffect(() => {
+    if (selectedAgent?.id) persist(LS_AGENT_ID, selectedAgent.id, setAgentId);
+  }, [selectedAgent?.id]);
+
+  useEffect(() => {
+    if (selectedAvatar?.id) persist(LS_AVATAR_ID, selectedAvatar.id, setAvatarId);
+  }, [selectedAvatar?.id]);
+
   function persist(key, val, setter) {
     setter(val);
     if (val) localStorage.setItem(key, val); else localStorage.removeItem(key);
@@ -59,19 +68,19 @@ export default function PreviewDemo() {
     const wh = webhooks.find(w => w.id === webhookId);
     if (!wh) return;
     n8n.triggerWebhook(wh.url, { event: eventName, source: 'ellux-preview-demo', avatar_id: avatarId, agent_id: agentId, ts: new Date().toISOString() })
-      .catch(e => showToast(`N8N webhook (${eventName}) failed: ${e.message}`, 'error'));
+      .catch(e => showToast(`Workflow webhook (${eventName}) failed: ${e.message}`, 'error'));
   }
 
   async function registerSecret() {
     const xiKey = localStorage.getItem('xi_api_key');
-    if (!xiKey) { showToast('Add your ElevenLabs API key in Settings first', 'error'); return; }
+    if (!xiKey) { showToast('Add your Agents API key in Settings first', 'error'); return; }
     setRegistering(true);
     try {
-      const res = await liveAvatar.registerSecret('Ellux ElevenLabs Key', 'ELEVENLABS_API_KEY', xiKey);
+      const res = await liveAvatar.registerSecret('Ellux Agents Key', 'ELEVENLABS_API_KEY', xiKey);
       const id = res.data?.id;
       if (!id) throw new Error('No secret id returned');
       persist(LS_SECRET_ID, id, setSecretId);
-      showToast('ElevenLabs secret registered with LiveAvatar', 'success');
+      showToast('Agents secret registered with Avatars', 'success');
     } catch (e) {
       showToast(e.message, 'error');
     } finally {
@@ -80,12 +89,29 @@ export default function PreviewDemo() {
   }
 
   async function startSession() {
-    if (!agentId) { showToast('Select an ElevenLabs agent', 'error'); return; }
-    if (!secretId) { showToast('Register your ElevenLabs secret first', 'error'); return; }
+    if (!agentId) { showToast('Select an agent', 'error'); return; }
+    if (!secretId) { showToast('Register your secret first', 'error'); return; }
     if (!avatarId) { showToast('Enter an Avatar ID', 'error'); return; }
 
     setStarting(true);
     try {
+      if (selectedVoice?.id) {
+        try {
+          const detail = await elevenLabs.getAgent(agentId);
+          if (detail.conversation_config?.tts?.voice_id !== selectedVoice.id) {
+            await elevenLabs.updateAgent(agentId, {
+              name: detail.name,
+              conversation_config: {
+                ...detail.conversation_config,
+                tts: { ...detail.conversation_config?.tts, voice_id: selectedVoice.id },
+              },
+            });
+          }
+        } catch (e) {
+          showToast(`Could not apply selected voice: ${e.message}`, 'error');
+        }
+      }
+
       const body = {
         mode: 'LITE',
         avatar_id: sandbox ? SANDBOX_AVATAR_ID : avatarId,
@@ -115,6 +141,10 @@ export default function PreviewDemo() {
       });
       session.on(AgentEventsEnum.AVATAR_TRANSCRIPTION, e => {
         setTranscript(t => [...t.slice(-8), { speaker: 'Avatar', text: e.text }]);
+      });
+      // Barge-in: as soon as the user starts speaking, interrupt the avatar's current response.
+      session.on(AgentEventsEnum.USER_SPEAK_STARTED, () => {
+        safeInterrupt(session);
       });
 
       await session.start();
@@ -148,8 +178,16 @@ export default function PreviewDemo() {
     else { session.startListening(); setListening(true); }
   }
 
+  function safeInterrupt(session) {
+    try {
+      (session ?? sessionRef.current)?.interrupt();
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  }
+
   function interrupt() {
-    sessionRef.current?.interrupt();
+    safeInterrupt();
   }
 
   return (
@@ -160,9 +198,18 @@ export default function PreviewDemo() {
           Preview &amp; Demo
         </h1>
         <p className="text-sm text-slate-500 mt-1">
-          End-to-end test bench — LiveAvatar streaming session driven by an ElevenLabs agent, configured from Ellux.
+          End-to-end test bench — an avatar streaming session driven by an agent, configured from Ellux.
         </p>
       </div>
+
+      {(selectedAgent || selectedAvatar || selectedVoice) && (
+        <div className="glass rounded-xl p-4 flex flex-wrap gap-2" style={{ borderColor: 'rgba(16,185,129,0.2)', background: 'rgba(16,185,129,0.04)' }}>
+          <span className="text-xs font-semibold text-green-400 flex items-center gap-1.5"><Sparkles size={12} /> Selected for Demo:</span>
+          {selectedAgent && <span className="badge badge-green">Agent: {selectedAgent.name}</span>}
+          {selectedAvatar && <span className="badge badge-green">Avatar: {selectedAvatar.name}</span>}
+          {selectedVoice && <span className="badge badge-green">Voice: {selectedVoice.name}</span>}
+        </div>
+      )}
 
       {!live && (
         <div className="glass-card rounded-xl p-5 space-y-4">
@@ -176,9 +223,9 @@ export default function PreviewDemo() {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-400 block mb-1">ElevenLabs Agent</label>
+            <label className="text-xs font-medium text-slate-400 block mb-1">Agent</label>
             {agents.length === 0 ? (
-              <p className="text-xs text-slate-600">No agents found — check your ElevenLabs API key in Settings.</p>
+              <p className="text-xs text-slate-600">No agents found — check your Agents API key in Settings.</p>
             ) : (
               <select value={agentId} onChange={e => persist(LS_AGENT_ID, e.target.value, setAgentId)}>
                 <option value="">Select an agent…</option>
@@ -190,12 +237,12 @@ export default function PreviewDemo() {
           {!sandbox && (
             <div>
               <label className="text-xs font-medium text-slate-400 block mb-1">Avatar ID</label>
-              <input value={avatarId} onChange={e => persist(LS_AVATAR_ID, e.target.value, setAvatarId)} placeholder="Avatar ID from Live Avatars page" />
+              <input value={avatarId} onChange={e => persist(LS_AVATAR_ID, e.target.value, setAvatarId)} placeholder="Avatar ID from Avatars page" />
             </div>
           )}
 
           <div>
-            <label className="text-xs font-medium text-slate-400 block mb-1">ElevenLabs Secret</label>
+            <label className="text-xs font-medium text-slate-400 block mb-1">Agents API Secret</label>
             <div className="flex items-center gap-2">
               <input value={secretId} onChange={e => persist(LS_SECRET_ID, e.target.value, setSecretId)} placeholder="Registered secret_id" style={{ flex: 1 }} />
               <button onClick={registerSecret} disabled={registering} className="btn-ghost flex-shrink-0">
@@ -203,13 +250,13 @@ export default function PreviewDemo() {
                 {registering ? 'Registering…' : 'Register from Settings key'}
               </button>
             </div>
-            <p className="text-xs text-slate-600 mt-1">Registers your ElevenLabs API key (Settings) as a LiveAvatar secret, one time — required even in sandbox mode.</p>
+            <p className="text-xs text-slate-600 mt-1">Registers your Agents API key (Settings) as an Avatars secret, one time — required even in sandbox mode.</p>
           </div>
 
           <div>
-            <label className="text-xs font-medium text-slate-400 block mb-1">N8N Webhook on session events <span className="text-slate-600">(optional)</span></label>
+            <label className="text-xs font-medium text-slate-400 block mb-1">Workflow Webhook on session events <span className="text-slate-600">(optional)</span></label>
             {webhooks.length === 0 ? (
-              <p className="text-xs text-slate-600">No webhooks configured — add one on the N8N Workflows page to enable this overlay.</p>
+              <p className="text-xs text-slate-600">No webhooks configured — add one on the Workflows page to enable this overlay.</p>
             ) : (
               <select value={webhookId} onChange={e => persist(LS_WEBHOOK_ID, e.target.value, setWebhookId)}>
                 <option value="">None</option>
@@ -264,9 +311,9 @@ export default function PreviewDemo() {
         <div>
           <p className="text-xs font-semibold text-cyan-400">How this works</p>
           <p className="text-xs text-slate-400 mt-0.5">
-            This page mints a LiveAvatar session token (LITE mode) directly from the browser using your LiveAvatar API key,
-            then streams the avatar driven by the selected ElevenLabs agent over LiveKit. All config — API keys, agent, avatar,
-            and the optional N8N webhook — comes from Ellux's Settings and saved Webhooks, making Ellux the master config for
+            This page mints an avatar session token (LITE mode) directly from the browser using your Avatars API key,
+            then streams the avatar driven by the selected agent over LiveKit. All config — API keys, agent, avatar,
+            and the optional workflow webhook — comes from Ellux's Settings and saved Webhooks, making Ellux the master config for
             this demo.{' '}
             <a href="https://docs.liveavatar.com" target="_blank" rel="noopener noreferrer" className="underline inline-flex items-center gap-1">
               Docs <ExternalLink size={10} />
